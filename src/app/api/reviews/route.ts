@@ -1,7 +1,7 @@
-import nodemailer from "nodemailer";
 import { randomUUID } from "node:crypto";
 import { STUDIO_EMAIL } from "@/data/studio";
 import { validateReview } from "@/lib/review";
+import { createStudioMailTransport, mailFailure } from "@/lib/studio-mail";
 
 export const runtime = "nodejs";
 const MAX_BYTES = 16000;
@@ -47,15 +47,10 @@ export async function POST(request: Request) {
     return reply("Bạn vui lòng đợi 15 phút rồi gửi lại đánh giá.", 429);
   attempts.set(key, { count: (recent?.count || 0) + 1, expires: recent?.expires || now + 15 * 60000 });
   const id = `REVIEW-${randomUUID()}`;
-  const transport = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.GMAIL_USER || STUDIO_EMAIL, pass: password },
-    connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000,
-    disableFileAccess: true, disableUrlAccess: true,
-  });
+  const transport = createStudioMailTransport(password);
   try {
     const result = await transport.sendMail({
-      from: { name: "DART Space Studio", address: process.env.GMAIL_USER || STUDIO_EMAIL },
+      from: { name: "DART Space Studio", address: process.env.GMAIL_USER?.trim() || STUDIO_EMAIL },
       to: STUDIO_EMAIL,
       replyTo: { name: review.name, address: review.email },
       subject: `[DART] ĐÁNH GIÁ KHÁCH HÀNG — ${id}`,
@@ -63,8 +58,8 @@ export async function POST(request: Request) {
     });
     if (!result.accepted.some((address) => String(address).toLowerCase() === STUDIO_EMAIL)) throw new Error("Recipient not accepted");
     return Response.json({ id });
-  } catch {
-    return reply("Chưa gửi được đánh giá. Nội dung vẫn ở trong form; vui lòng thử lại hoặc liên hệ studio.", 502);
+  } catch (error) {
+    return Response.json(mailFailure(error, "review", id), { status: 502 });
   } finally {
     transport.close();
   }

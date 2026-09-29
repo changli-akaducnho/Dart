@@ -1,10 +1,10 @@
-import nodemailer from "nodemailer";
 import { fileTypeFromBuffer } from "file-type";
 import { randomUUID } from "node:crypto";
 import { artworks } from "@/data/artworks";
 import { STUDIO_EMAIL } from "@/data/studio";
 import { validateBooking } from "@/lib/booking";
 import { bookingEmail } from "@/lib/booking-email";
+import { createStudioMailTransport, mailFailure } from "@/lib/studio-mail";
 
 export const runtime = "nodejs";
 const MAX_REQUEST_BYTES = 6 * 1024 * 1024;
@@ -117,20 +117,12 @@ export async function POST(request: Request) {
     expires: recent?.expires || now + 15 * 60_000,
   });
   const id = `DART-${randomUUID()}`;
-  const transport = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.GMAIL_USER || STUDIO_EMAIL, pass: password },
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
-    disableFileAccess: true,
-    disableUrlAccess: true,
-  });
+  const transport = createStudioMailTransport(password);
   try {
     const result = await transport.sendMail({
       from: {
         name: "DART Space Studio",
-        address: process.env.GMAIL_USER || STUDIO_EMAIL,
+        address: process.env.GMAIL_USER?.trim() || STUDIO_EMAIL,
       },
       ...bookingEmail(booking, id, new Date(), artwork),
       attachments: attachment ? [attachment] : [],
@@ -142,11 +134,8 @@ export async function POST(request: Request) {
     )
       throw new Error("Recipient not accepted");
     return Response.json({ id });
-  } catch {
-    return reply(
-      "Chưa xác nhận gửi được yêu cầu. Thông tin vẫn ở trong biểu mẫu; vui lòng thử lại hoặc liên hệ Zalo.",
-      502,
-    );
+  } catch (error) {
+    return Response.json(mailFailure(error, "booking", id), { status: 502 });
   } finally {
     transport.close();
   }

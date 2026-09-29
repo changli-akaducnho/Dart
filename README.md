@@ -152,6 +152,10 @@ Customer reviews use `POST /api/reviews` and the same Gmail configuration. Valid
 
 Run `npm test` for booking rule, email format, attachment and API failure-path tests without sending email.
 
+Both email endpoints use `src/lib/studio-mail.ts`. It connects with verified TLS to `smtp.gmail.com:465` by hostname and supplies the secured socket to Nodemailer. This avoids Nodemailer's pre-resolved-IP connection path, which failed in a local workerd reproduction while a hostname connection succeeded. It does not bypass Gmail authentication or certificate verification.
+
+If a send fails, the form displays a support reference and a diagnostic category. `MAIL_AUTH_FAILED` indicates authentication rejection; verify that the Worker secrets contain the correct Gmail account and that account's App Password. `MAIL_CONNECTION_FAILED` indicates a socket/DNS/TLS/timeout failure. `MAIL_SEND_FAILED` covers other delivery failures. Cloudflare logs contain `studio_mail_failed` with only the request ID and allowlisted SMTP metadata, never the raw error, credentials, form fields or attachment. Check runtime logs rather than build logs. No automatic send retry is performed, because a lost acknowledgement could otherwise duplicate an email.
+
 ## Before publishing publicly
 
 1. Review the integrated DART catalog, confirm measurements and materials, and keep prices and availability current. Supply the missing dimensions and confirm a price before enabling purchase inquiries for Akaza or Raiden.

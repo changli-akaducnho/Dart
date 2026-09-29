@@ -81,6 +81,14 @@ Initial browser validation: 2026-09-28 in Codex Chromium on Windows. Later chang
 - Headless Edge checks at 1440, 390 and 320 px passed: correct pricing and Facebook links, no generated images in DOM, both address fields, only A5/A4, conditional Custom Concept requirements, review failure preservation/success, no horizontal overflow, reduced-motion behavior and no page errors. Inspected pricing, reviews and booking screenshots in ignored `qa-results/`.
 - Local `.env.local` still has no configured Gmail App Password. Real booking/review delivery remains dependent on Gmail configuration and inbox verification. No Git push or Cloudflare deployment performed.
 
-## Verification limits
+## Gmail connection investigation — 2026-09-30
+
+- Public home at `https://dart.dartstudio.workers.dev/` returned 200 with the updated pricing/review section; GET requests to both POST-only email endpoints returned expected 405 responses. No real booking/review was submitted during this investigation.
+- A credential-free SMTP `verify()` against Gmail succeeded on Node. The same default Nodemailer transport in local Wrangler/workerd failed before authentication with `ESOCKET`, command `CONN`, message `proxy request failed, cannot connect to the specified address`.
+- Supplying a verified TLS socket opened by hostname (`smtp.gmail.com:465`, explicit SNI) succeeded in the same local workerd environment. Repeated that connection check using the actual shared `getGmailSocket` implementation. Probes send no AUTH, MAIL FROM, RCPT TO or DATA, and do not access Gmail credentials.
+- Applied the shared connection helper to both email endpoints; added bounded TLS timeout, socket cleanup, safe failure categories/reference IDs, and allowlisted diagnostic logging. All 25 tests passed, including hostname/SNI/certificate settings, TLS error/timeout cleanup, and exclusion of secret/customer data from logs. Lint, TypeScript and the OpenNext Cloudflare build passed.
+- Production runtime logs are unavailable because Wrangler is not authenticated. This reproduces and fixes a connection failure locally; it does not yet prove the exact cause of the reported production request or real Gmail inbox delivery. Existing Worker secrets must still authenticate successfully after deployment.
+
+## General verification limits
 
 This MVP now includes a server email endpoint; analytics remain browser-local. Tests use synthetic example.test contacts and a mocked mail transport. No real orders, payments or external email deliveries occurred during verification. The initial responsive inspection used Chromium viewport emulation, not physical devices or Safari/Firefox. Native semantic controls and reduced-motion styles are implemented; no claim of full accessibility certification or a measured Lighthouse score is made.
