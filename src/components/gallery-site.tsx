@@ -1,0 +1,1008 @@
+"use client";
+
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { artworks, heroArtworkIds, type Artwork } from "@/data/artworks";
+import { categories, faqs, policies, testimonials } from "@/data/site-content";
+import { trackEvent } from "@/lib/analytics";
+import { CommissionForm, PurchaseForm } from "./inquiry-forms";
+import { Modal } from "./modal";
+import { Icon } from "./icons";
+import { HeroGallery } from "./hero-gallery";
+import { ArtworkImages } from "./artwork-images";
+import { BookingNotice } from "./booking-notice";
+import { STUDIO_EMAIL, STUDIO_ZALO } from "@/data/studio";
+
+type Overlay =
+  | { type: "commission"; source: string }
+  | { type: "artwork"; artwork: Artwork }
+  | { type: "purchase"; artwork: Artwork }
+  | { type: "contact" }
+  | { type: "cart" }
+  | { type: "search" }
+  | { type: "story" }
+  | { type: "policy"; key: string }
+  | { type: "social"; name: string };
+const price = (value: number | null) =>
+  value === null
+    ? "Liên hệ báo giá"
+    : new Intl.NumberFormat("vi-VN").format(value) + " ₫";
+const statusLabel = (artwork: Artwork) =>
+  artwork.status === "available"
+    ? "Còn bán"
+    : artwork.status === "delivered"
+      ? "Đã giao"
+      : "Liên hệ báo giá";
+const heroArtworks = heroArtworkIds.map(
+  (id) => artworks.find((art) => art.id === id)!,
+);
+const collection = artworks.filter((art) => !heroArtworkIds.includes(art.id));
+const categoryLabel = (category: string) =>
+  categories.find((item) => item.value === category)?.label || category;
+
+export function GallerySite() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [overlay, setOverlay] = useState<Overlay | null>(null);
+  const [category, setCategory] = useState("all");
+  const [search, setSearch] = useState("");
+  const pageTracked = useRef(false);
+  const menuToggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!pageTracked.current) {
+      trackEvent("page_view", { source: "home" });
+      pageTracked.current = true;
+    }
+  }, []);
+  const commission = (source: string) => {
+    setMenuOpen(false);
+    trackEvent("click_commission", { source });
+    setOverlay({ type: "commission", source });
+  };
+  const contact = (source: string) => {
+    setMenuOpen(false);
+    trackEvent("click_contact", { source });
+    setOverlay({ type: "contact" });
+  };
+  const openArtwork = (artwork: Artwork, source = "gallery") => {
+    trackEvent("click_artwork", { source, artworkId: artwork.id });
+    setOverlay({ type: "artwork", artwork });
+  };
+  const browse = (source: string) => {
+    trackEvent("click_view_artworks", { source });
+    setMenuOpen(false);
+    setOverlay(null);
+  };
+  const social = (name: string, source: string) => {
+    if (name === "Instagram") trackEvent("click_instagram", { source });
+    setOverlay({ type: "social", name });
+  };
+  const filtered = collection.filter(
+    (art) => category === "all" || art.category === category,
+  );
+  const searchResults = artworks.filter((art) =>
+    `${art.id} ${art.title} ${art.artist} ${categoryLabel(art.category)}`
+      .toLocaleLowerCase("vi")
+      .includes(search.trim().toLocaleLowerCase("vi")),
+  );
+
+  return (
+    <>
+      <a className="skip-link" href="#main">
+        Đến nội dung chính
+      </a>
+      <header className="site-header">
+        <div className="header-inner page-width">
+          <a href="#home" className="wordmark" aria-label="DART — Trang chủ">
+            DART<span>®</span>
+          </a>
+          <nav className="desktop-nav" aria-label="Điều hướng chính">
+            <a href="#home" className="nav-home">
+              Home
+            </a>
+            <a href="#artworks" onClick={() => browse("navigation")}>
+              Artworks
+            </a>
+            <a href="#commission">Commission</a>
+            <a href="#about">About</a>
+            <button onClick={() => contact("navigation")}>Contact</button>
+          </nav>
+          <div className="header-actions">
+            <button
+              className="icon-button"
+              aria-label="Tìm kiếm tác phẩm"
+              onClick={() => {
+                setSearch("");
+                setOverlay({ type: "search" });
+              }}
+            >
+              <Icon name="search" />
+            </button>
+            <button
+              className="icon-button bag-button"
+              aria-label="Mở giỏ hàng"
+              onClick={() => setOverlay({ type: "cart" })}
+            >
+              <Icon name="bag" />
+              <span className="cart-count">0</span>
+            </button>
+            <button
+              className="button button-primary nav-cta"
+              onClick={() => commission("navigation")}
+            >
+              Đặt tranh theo yêu cầu <Icon name="arrow-up" size={16} />
+            </button>
+            <button
+              ref={menuToggle}
+              className="icon-button menu-toggle"
+              aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-nav"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              <Icon name={menuOpen ? "close" : "menu"} />
+            </button>
+          </div>
+        </div>
+        {menuOpen && (
+          <nav
+            id="mobile-nav"
+            className="mobile-nav"
+            aria-label="Điều hướng di động"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setMenuOpen(false);
+                menuToggle.current?.focus();
+              }
+            }}
+          >
+            <a href="#home" onClick={() => setMenuOpen(false)}>
+              Home
+            </a>
+            <a href="#artworks" onClick={() => browse("navigation")}>
+              Artworks
+            </a>
+            <a href="#commission" onClick={() => setMenuOpen(false)}>
+              Commission
+            </a>
+            <a href="#about" onClick={() => setMenuOpen(false)}>
+              About
+            </a>
+            <button onClick={() => contact("navigation")}>Contact</button>
+            <button
+              className="button button-primary"
+              onClick={() => commission("navigation")}
+            >
+              Đặt tranh theo yêu cầu <Icon name="arrow" />
+            </button>
+          </nav>
+        )}
+      </header>
+
+      <main id="main">
+        <section
+          className="hero page-width"
+          id="home"
+          aria-labelledby="hero-title"
+        >
+          <div className="hero-copy">
+            <p className="eyebrow">
+              <span className="small-line" /> ORIGINAL PAINTINGS. PERSONAL
+              COMMISSIONS.
+            </p>
+            <h1 id="hero-title">
+              Art made
+              <br />
+              <em>personal.</em>
+            </h1>
+            <p className="hero-description">
+              Những tác phẩm được tạo ra để thuộc về không gian và câu chuyện
+              của riêng bạn.
+            </p>
+            <div className="hero-buttons">
+              <a
+                href="#artworks"
+                className="button button-primary"
+                onClick={() => browse("hero")}
+              >
+                Khám phá tranh <Icon name="arrow" size={18} />
+              </a>
+              <button className="text-link" onClick={() => commission("hero")}>
+                Đặt tranh riêng <Icon name="arrow-up" size={17} />
+              </button>
+            </div>
+            <div className="hero-footnote">
+              <span className="asterisk">✳</span>
+              <p>
+                Tranh độc bản. Cảm xúc riêng.
+                <br />
+                <span>Dành cho những không gian có câu chuyện.</span>
+              </p>
+            </div>
+          </div>
+          <HeroGallery
+            items={heroArtworks}
+            onSelect={(artwork) => openArtwork(artwork, "hero")}
+            suspended={overlay !== null}
+          />
+        </section>
+
+        <div className="studio-strip">
+          <div className="page-width">
+            <span>MADE WITH INTENTION</span>
+            <span>
+              Vẽ bằng tay <i>✳</i> Kể bằng cảm xúc <i>✳</i> Dành riêng cho bạn
+            </span>
+            <span>FROM DART, WITH LOVE</span>
+          </div>
+        </div>
+
+        <section
+          className="section page-width"
+          id="artworks"
+          aria-labelledby="artworks-title"
+        >
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">01 / SELECTED WORKS</p>
+              <h2 id="artworks-title">
+                Tác phẩm nổi bật<span className="serif-dot">.</span>
+              </h2>
+            </div>
+            <p>
+              Một góc nhìn mới.
+              <br />
+              Một cảm xúc ở lại.
+            </p>
+          </div>
+          <div className="collection-toolbar">
+            <div
+              className="filter-list"
+              role="group"
+              aria-label="Lọc theo thể loại"
+            >
+              {categories.map((item) => (
+                <button
+                  key={item.value}
+                  aria-pressed={category === item.value}
+                  className={
+                    category === item.value ? "filter active" : "filter"
+                  }
+                  onClick={() => {
+                    setCategory(item.value);
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <span className="work-count">
+              {String(filtered.length).padStart(2, "0")} TÁC PHẨM
+            </span>
+          </div>
+          <div className="artwork-grid" aria-live="polite">
+            {filtered.map((art, index) => (
+              <article className="artwork-card" key={art.id}>
+                <button
+                  className={`artwork-image artwork-tone-${index % 3}`}
+                  onClick={() => openArtwork(art)}
+                  aria-label={`Xem tác phẩm ${art.title}`}
+                >
+                  <span className="artwork-status">
+                    <i
+                      className={art.available ? "available" : "unavailable"}
+                    />
+                    {statusLabel(art)}
+                  </span>
+                  <div className="artwork-image-mat">
+                    <Image
+                      src={art.image}
+                      alt={`${art.title}, ${art.artist}`}
+                      fill
+                      sizes="(max-width: 550px) 90vw, (max-width: 900px) 44vw, 28vw"
+                      className="object-contain"
+                    />
+                  </div>
+                  <span className="artwork-hover">
+                    Xem tác phẩm <Icon name="arrow-up" size={17} />
+                  </span>
+                </button>
+                <div className="artwork-label">
+                  <div>
+                    <button
+                      onClick={() => openArtwork(art)}
+                      className="artwork-title"
+                    >
+                      {art.title}
+                    </button>
+                    <p>{art.medium}</p>
+                  </div>
+                  <span className="artwork-price">{price(art.price)}</span>
+                </div>
+                <p className="artwork-artist">
+                  {art.id.toUpperCase()}{" "}
+                  <span>— {categoryLabel(art.category)}</span>
+                </p>
+              </article>
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <div className="collection-empty">
+              <p className="eyebrow">MỘT CÂU CHUYỆN CHƯA ĐƯỢC VẼ</p>
+              <h3>
+                Bộ sưu tập {categoryLabel(category).toLocaleLowerCase("vi")}{" "}
+                đang được cập nhật.
+              </h3>
+              <p>Bạn có thể chia sẻ ý tưởng để DART tạo một tác phẩm riêng.</p>
+              <button
+                className="button button-outline"
+                onClick={() => commission("gallery")}
+              >
+                Đặt tranh theo yêu cầu <Icon name="arrow-up" size={17} />
+              </button>
+            </div>
+          )}
+          <p className="demo-caption">
+            Tác phẩm và sản phẩm thực hiện bởi DART · Giá của các mục “Đã giao”
+            là giá tác phẩm đã thực hiện.
+          </p>
+        </section>
+
+        <section
+          className="commission-section"
+          id="commission"
+          aria-labelledby="commission-title"
+        >
+          <div className="page-width commission-layout">
+            <div className="commission-intro">
+              <p className="eyebrow">02 / MADE JUST FOR YOU</p>
+              <h2 id="commission-title">
+                Biến ý tưởng của bạn
+                <br />
+                thành <em>một tác phẩm.</em>
+              </h2>
+              <p>
+                Một kỷ niệm, một người thương, hay một góc nhỏ trong tâm trí.
+                Cùng DART kể câu chuyện ấy bằng màu sắc.
+              </p>
+              <button
+                className="button button-ivory"
+                onClick={() => commission("commission_section")}
+              >
+                Đặt tranh theo yêu cầu <Icon name="arrow-up" size={18} />
+              </button>
+              <span className="commission-note">
+                Bắt đầu từ một cuộc trò chuyện.
+              </span>
+            </div>
+            <div className="commission-process">
+              {[
+                {
+                  title: "Gửi ý tưởng",
+                  text: "Chia sẻ câu chuyện, cảm hứng hoặc hình ảnh của bạn.",
+                },
+                {
+                  title: "Tìm tiếng nói chung",
+                  text: "Cùng chọn phong cách, màu sắc và kích thước phù hợp.",
+                },
+                {
+                  title: "Thống nhất trước khi vẽ",
+                  text: "Xác nhận báo giá, tiến độ và bản phác thảo.",
+                },
+                {
+                  title: "Đón tác phẩm của riêng bạn",
+                  text: "Hoàn thiện, đóng gói và trao gửi đến không gian của bạn.",
+                },
+              ].map((step, index) => (
+                <div className="process-step" key={step.title}>
+                  <span className="step-number">0{index + 1}</span>
+                  <div>
+                    <h3>{step.title}</h3>
+                    <p>{step.text}</p>
+                  </div>
+                  <Icon name="arrow-up" size={20} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="why-section page-width"
+          aria-label="Vì sao chọn DART"
+        >
+          <div className="why-heading">
+            <p className="eyebrow">THE DART APPROACH</p>
+            <h2>Nghệ thuật, theo cách gần gũi hơn.</h2>
+          </div>
+          <div className="why-grid">
+            {[
+              {
+                icon: "spark" as const,
+                title: "Tác phẩm độc bản",
+                text: "Mỗi nét vẽ được thực hiện thủ công, mang một câu chuyện riêng.",
+              },
+              {
+                icon: "brush" as const,
+                title: "Dấu ấn của bạn",
+                text: "Phong cách, màu sắc và kích thước được chọn cùng bạn.",
+              },
+              {
+                icon: "chat" as const,
+                title: "Trao đổi trực tiếp",
+                text: "Làm việc với người vẽ tranh, từ ý tưởng đến khi hoàn thiện.",
+              },
+              {
+                icon: "check" as const,
+                title: "Rõ ràng từ đầu",
+                text: "Thống nhất chi phí và tiến độ trước khi bắt đầu tác phẩm.",
+              },
+            ].map((item) => (
+              <div className="why-item" key={item.title}>
+                <Icon name={item.icon} size={29} />
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="story-section page-width"
+          id="about"
+          aria-labelledby="story-title"
+        >
+          <div className="story-image">
+            <Image
+              src="/images/dart-studio.webp"
+              alt="Không gian sáng tạo với màu vẽ, cọ và tranh trong một xưởng nghệ thuật minh họa"
+              fill
+              sizes="(max-width: 767px) 90vw, 48vw"
+              className="object-cover"
+            />
+            <span className="image-caption">
+              STUDIO INSPIRATION · HÌNH ẢNH MINH HỌA
+            </span>
+          </div>
+          <div className="story-copy">
+            <p className="eyebrow">03 / THE STORY BEHIND DART</p>
+            <h2 id="story-title">
+              Không chỉ là
+              <br />
+              một <em>bức tranh.</em>
+            </h2>
+            <p>
+              Chúng mình tin rằng nghệ thuật không cần phải xa cách. Đôi khi, đó
+              chỉ là một gam màu khiến bạn thấy bình yên, hay một hình ảnh gợi
+              về điều bạn thương.
+            </p>
+            <p>
+              DART là một studio nghệ thuật độc lập, nơi những câu chuyện cá
+              nhân tìm thấy hình hài qua từng nét vẽ. Chúng mình muốn làm ra
+              những tác phẩm mà bạn có thể gọi là «của mình».
+            </p>
+            <button
+              className="text-link"
+              onClick={() => setOverlay({ type: "story" })}
+            >
+              Tìm hiểu về DART <Icon name="arrow-up" size={18} />
+            </button>
+            <div className="story-signature">
+              Made slowly. <em>Meant to stay.</em>
+            </div>
+          </div>
+        </section>
+
+        <section className="testimonials-section">
+          <div className="page-width">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">ART FINDS A HOME</p>
+                <h2>Khách hàng nói gì về DART</h2>
+              </div>
+              <span className="sample-label">CÂU CHUYỆN MINH HỌA</span>
+            </div>
+            <div className="testimonials-grid">
+              {testimonials.map((item) => (
+                <figure className="testimonial" key={item.id}>
+                  <span className="quote-mark">“</span>
+                  <blockquote>{item.quote}</blockquote>
+                  <figcaption>
+                    <span className="initials">{item.initials}</span>
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.context}</small>
+                    </span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+            <p className="demo-caption">
+              Nội dung mẫu để minh họa bố cục, chưa phải đánh giá từ khách hàng
+              thực tế.
+            </p>
+          </div>
+        </section>
+
+        <section
+          className="section page-width studio-section"
+          aria-labelledby="studio-title"
+        >
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">IN BETWEEN THE BRUSHSTROKES</p>
+              <h2 id="studio-title">
+                DART Studio<span className="serif-dot">.</span>
+              </h2>
+            </div>
+            <button
+              className="text-link"
+              onClick={() => social("Instagram", "studio")}
+            >
+              <Icon name="instagram" size={18} />
+              Theo dõi @dart.studio <Icon name="arrow-up" size={17} />
+            </button>
+          </div>
+          <div className="studio-mosaic">
+            {[
+              {
+                image: "/images/dart-process.webp",
+                alt: "Quá trình vẽ tranh trong studio minh họa",
+                label: "The process",
+              },
+              {
+                image: artworks[3].image,
+                alt: `Nét vẽ trong ${artworks[3].title}`,
+                label: "Little details",
+              },
+              {
+                image: artworks[1].image,
+                alt: `Tác phẩm hoàn thiện: ${artworks[1].title}`,
+                label: "Color stories",
+              },
+              {
+                image: "/images/dart-studio.webp",
+                alt: "Không gian xưởng vẽ minh họa bằng AI",
+                label: "Studio moments",
+              },
+            ].map((item) => (
+              <button
+                key={item.label}
+                onClick={() => social("Instagram", "studio_gallery")}
+                className="studio-tile"
+                aria-label={`${item.label} — DART Studio`}
+              >
+                <Image
+                  src={item.image}
+                  alt={item.alt}
+                  fill
+                  sizes="(max-width: 600px) 44vw, 24vw"
+                  className="object-cover"
+                />
+                <span>
+                  {item.label}
+                  <Icon name="arrow-up" size={17} />
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="demo-caption">
+            Tác phẩm thật từ DART; hình ảnh không gian và quá trình sáng tạo
+            minh họa bằng AI.
+          </p>
+        </section>
+
+        <section className="faq-section page-width" aria-labelledby="faq-title">
+          <div>
+            <p className="eyebrow">A FEW THINGS TO KNOW</p>
+            <h2 id="faq-title">
+              Bạn hỏi,
+              <br />
+              <em>DART trả lời.</em>
+            </h2>
+            <p>Vẫn còn điều muốn biết?</p>
+            <button className="text-link" onClick={() => contact("faq")}>
+              Trò chuyện cùng DART <Icon name="arrow-up" size={17} />
+            </button>
+          </div>
+          <div className="faq-list">
+            {faqs.map((faq, index) => (
+              <details key={faq.question} name="dart-faq">
+                <summary>
+                  <span className="faq-number">0{index + 1}</span>
+                  {faq.question}
+                  <Icon name="plus" size={18} />
+                </summary>
+                <p>{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="final-cta" id="contact">
+          <div className="page-width">
+            <p className="eyebrow">LET’S MAKE SOMETHING MEANINGFUL</p>
+            <h2>
+              Bạn có một <em>ý tưởng?</em>
+            </h2>
+            <p>Hãy biến nó thành một tác phẩm dành riêng cho bạn.</p>
+            <div>
+              <button
+                className="button button-primary"
+                onClick={() => commission("final_cta")}
+              >
+                Đặt tranh ngay <Icon name="arrow-up" size={18} />
+              </button>
+              <button
+                className="button button-outline"
+                onClick={() => contact("final_cta")}
+              >
+                Liên hệ DART <Icon name="arrow" size={18} />
+              </button>
+            </div>
+            <span className="final-asterisk" aria-hidden="true">
+              ✳
+            </span>
+          </div>
+        </section>
+      </main>
+
+      <footer className="site-footer">
+        <div className="page-width">
+          <div className="footer-main">
+            <div className="footer-brand">
+              <a href="#home" className="wordmark">
+                DART<span>®</span>
+              </a>
+              <p>
+                Original art. Personal stories.
+                <br />
+                Một chút nghệ thuật, một phần của bạn.
+              </p>
+            </div>
+            <div className="footer-column">
+              <h3>KHÁM PHÁ</h3>
+              <a href="#artworks" onClick={() => browse("footer")}>
+                Tác phẩm
+              </a>
+              <button onClick={() => commission("footer")}>
+                Đặt tranh riêng
+              </button>
+              <a href="#about">Về DART</a>
+            </div>
+            <div className="footer-column">
+              <h3>KẾT NỐI</h3>
+              {["Instagram", "Facebook", "TikTok"].map((name) => (
+                <button key={name} onClick={() => social(name, "footer")}>
+                  {name} <span aria-hidden="true">↗</span>
+                </button>
+              ))}
+            </div>
+            <div className="footer-column footer-contact">
+              <h3>MỘT CUỘC TRÒ CHUYỆN?</h3>
+              <a
+                href={`mailto:${STUDIO_EMAIL}`}
+                onClick={() =>
+                  trackEvent("click_contact", { source: "footer_email" })
+                }
+              >
+                {STUDIO_EMAIL} <Icon name="arrow-up" size={17} />
+              </a>
+              <span>Email chính thức của studio</span>
+              <p>Câu chuyện của bạn là điểm bắt đầu.</p>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <p>© {new Date().getFullYear()} DART Studio.</p>
+            <div>
+              {Object.entries(policies).map(([key, policy]) => (
+                <button
+                  key={key}
+                  onClick={() => setOverlay({ type: "policy", key })}
+                >
+                  {policy.title === "Điều khoản & dữ liệu"
+                    ? "Điều khoản"
+                    : policy.title}
+                </button>
+              ))}
+            </div>
+            <span>MADE WITH A HUMAN TOUCH</span>
+          </div>
+        </div>
+      </footer>
+
+      <a
+        className="zalo-contact"
+        href="https://zalo.me/0963549673"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Trao đổi qua Zalo với DART, số 0963549673 (mở tab mới)"
+        title="Trao đổi qua Zalo · 0963549673"
+        onClick={() => trackEvent("click_contact", { source: "zalo_floating" })}
+      >
+        <span className="zalo-contact-badge" aria-hidden="true">
+          Zalo
+        </span>
+        <span className="zalo-contact-copy" aria-hidden="true">
+          <strong>Trao đổi qua Zalo</strong>
+          <span>0963 549 673</span>
+        </span>
+      </a>
+
+      {overlay?.type === "commission" && (
+        <Modal
+          title="Một ý tưởng. Một khởi đầu."
+          onClose={() => setOverlay(null)}
+          notice={<BookingNotice />}
+          wide
+        >
+          <CommissionForm source={overlay.source} />
+        </Modal>
+      )}
+      {overlay?.type === "artwork" && (
+        <Modal
+          title="Câu chuyện của tác phẩm"
+          onClose={() => setOverlay(null)}
+          wide
+        >
+          <div className="artwork-detail">
+            <ArtworkImages key={overlay.artwork.id} artwork={overlay.artwork} />
+            <div className="detail-copy">
+              <p className="eyebrow">
+                {categoryLabel(overlay.artwork.category)}
+              </p>
+              <h2>{overlay.artwork.title}</h2>
+              <p className="detail-artist">
+                {overlay.artwork.artist} · {overlay.artwork.id.toUpperCase()}
+              </p>
+              <p className="detail-price">{price(overlay.artwork.price)}</p>
+              <p>{overlay.artwork.description}</p>
+              <dl>
+                <div>
+                  <dt>Kích thước</dt>
+                  <dd>{overlay.artwork.dimensions}</dd>
+                </div>
+                <div>
+                  <dt>Chất liệu</dt>
+                  <dd>{overlay.artwork.medium}</dd>
+                </div>
+                <div>
+                  <dt>Tình trạng</dt>
+                  <dd>{statusLabel(overlay.artwork)}</dd>
+                </div>
+              </dl>
+              {overlay.artwork.available && overlay.artwork.price !== null ? (
+                <button
+                  className="button button-primary"
+                  onClick={() => {
+                    trackEvent("click_buy_artwork", {
+                      source: "artwork_detail",
+                      artworkId: overlay.artwork.id,
+                    });
+                    setOverlay({ type: "purchase", artwork: overlay.artwork });
+                  }}
+                >
+                  Mua tác phẩm <Icon name="arrow-up" size={18} />
+                </button>
+              ) : overlay.artwork.status === "inquiry" ? (
+                <button
+                  className="button button-primary"
+                  onClick={() => contact("artwork_detail")}
+                >
+                  Liên hệ báo giá <Icon name="arrow-up" size={18} />
+                </button>
+              ) : (
+                <button
+                  className="button button-primary"
+                  onClick={() => commission("artwork_detail")}
+                >
+                  Đặt một tác phẩm riêng <Icon name="arrow-up" size={18} />
+                </button>
+              )}
+              <button
+                className="button button-outline"
+                onClick={() => contact("artwork_detail")}
+              >
+                Liên hệ <Icon name="chat" size={18} />
+              </button>
+              <p className="form-note">
+                {overlay.artwork.status === "delivered"
+                  ? "Tác phẩm đã hoàn thành và giao cho khách. Bạn có thể đặt một tác phẩm mới theo phong cách tương tự."
+                  : overlay.artwork.status === "inquiry"
+                    ? "Tác phẩm trưng bày để tham khảo. Vui lòng liên hệ để biết giá; chưa tiếp nhận yêu cầu mua trên website."
+                    : "Tác phẩm còn bán. Gửi yêu cầu để nhân viên tư vấn hỗ trợ và xác nhận đơn hàng."}
+              </p>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {overlay?.type === "purchase" && overlay.artwork.price !== null && (
+        <Modal
+          title="Tác phẩm này có thể thuộc về bạn."
+          onClose={() => setOverlay(null)}
+          notice={<BookingNotice />}
+        >
+          <PurchaseForm
+            artwork={{
+              id: overlay.artwork.id,
+              title: overlay.artwork.title,
+              price: overlay.artwork.price,
+            }}
+            source="artwork_detail"
+          />
+        </Modal>
+      )}
+      {overlay?.type === "search" && (
+        <Modal
+          title="Tìm một tác phẩm chạm đến bạn."
+          onClose={() => setOverlay(null)}
+        >
+          <label className="search-label" htmlFor="art-search">
+            Tên tác phẩm, nghệ sĩ hoặc thể loại
+          </label>
+          <div className="search-input">
+            <Icon name="search" />
+            <input
+              id="art-search"
+              type="search"
+              placeholder="Thử “phong cảnh”..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              autoFocus
+            />
+          </div>
+          <p className="search-count" aria-live="polite">
+            {searchResults.length} tác phẩm được tìm thấy
+          </p>
+          <div className="search-results">
+            {searchResults.map((art) => (
+              <button key={art.id} onClick={() => openArtwork(art, "search")}>
+                <Image
+                  src={art.image}
+                  width={64}
+                  height={72}
+                  alt={art.title}
+                  className="object-cover"
+                />
+                <span>
+                  <strong>{art.title}</strong>
+                  <small>
+                    {art.artist} · {categoryLabel(art.category)}
+                  </small>
+                </span>
+                <Icon name="arrow-up" size={18} />
+              </button>
+            ))}
+            {searchResults.length === 0 && (
+              <p className="empty-message">
+                Chưa có tác phẩm phù hợp. Hãy thử một tên hoặc thể loại khác.
+              </p>
+            )}
+          </div>
+        </Modal>
+      )}
+      {overlay?.type === "cart" && (
+        <Modal title="Giỏ hàng của bạn" onClose={() => setOverlay(null)}>
+          <div className="empty-state">
+            <Icon name="bag" size={48} />
+            <h3>Một chỗ trống cho điều bạn yêu.</h3>
+            <p>
+              Giỏ hàng đang trống. Ở phiên bản này, bạn có thể gửi yêu cầu mua
+              trực tiếp từ mỗi tác phẩm để bắt đầu trao đổi.
+            </p>
+            <a
+              className="button button-primary"
+              href="#artworks"
+              onClick={() => browse("cart")}
+            >
+              Khám phá tranh <Icon name="arrow" />
+            </a>
+          </div>
+        </Modal>
+      )}
+      {overlay?.type === "contact" && (
+        <Modal
+          title="Bắt đầu một cuộc trò chuyện."
+          onClose={() => setOverlay(null)}
+        >
+          <div className="contact-content">
+            <p>
+              Một câu hỏi về tác phẩm, một ý tưởng mới, hay đơn giản là lời chào
+              — DART luôn sẵn lòng lắng nghe.
+            </p>
+            <div className="contact-email">
+              <span>EMAIL CỦA STUDIO</span>
+              <a href={`mailto:${STUDIO_EMAIL}`}>
+                <strong>{STUDIO_EMAIL}</strong>
+              </a>
+              <p>
+                Gửi email hoặc{" "}
+                <a href={STUDIO_ZALO} target="_blank" rel="noopener noreferrer">
+                  trao đổi qua Zalo
+                </a>{" "}
+                để được studio tư vấn trực tiếp.
+              </p>
+            </div>
+            <button
+              className="button button-primary"
+              onClick={() => commission("contact")}
+            >
+              Chia sẻ ý tưởng của bạn <Icon name="arrow-up" />
+            </button>
+            <p className="form-note">
+              Sau khi nhận yêu cầu đặt tranh, nhân viên tư vấn sẽ liên hệ hỗ trợ
+              trực tiếp.
+            </p>
+          </div>
+        </Modal>
+      )}
+      {overlay?.type === "story" && (
+        <Modal
+          title="DART — Nghệ thuật bắt đầu từ bạn."
+          onClose={() => setOverlay(null)}
+        >
+          <div className="prose">
+            <p>
+              DART được hình dung như một studio nhỏ dành cho những người muốn
+              sống cùng nghệ thuật. Một tác phẩm không nhất thiết phải lớn lao:
+              nó có thể giữ lại ánh sáng của một buổi chiều, nét mặt người thân
+              hay một nơi chốn đặc biệt.
+            </p>
+            <p>
+              Chúng mình bắt đầu bằng việc lắng nghe. Cùng bạn chọn chất liệu,
+              sắc độ và kích thước, rồi để từng nét vẽ hoàn thiện câu chuyện.
+            </p>
+            <p>
+              Tranh có sẵn dành cho những rung động tình cờ. Tranh đặt riêng
+              dành cho những điều chưa có hình hài. Cả hai đều bắt đầu từ một
+              kết nối cá nhân.
+            </p>
+            <p className="form-note">
+              Nội dung giới thiệu mẫu. Thông tin nghệ sĩ, hình ảnh studio và câu
+              chuyện thương hiệu cần được xác nhận trước khi phát hành.
+            </p>
+            <button
+              className="button button-primary"
+              onClick={() => commission("about")}
+            >
+              Kể câu chuyện của bạn <Icon name="arrow-up" />
+            </button>
+          </div>
+        </Modal>
+      )}
+      {overlay?.type === "policy" && (
+        <Modal
+          title={policies[overlay.key].title}
+          onClose={() => setOverlay(null)}
+        >
+          <div className="prose">
+            {policies[overlay.key].paragraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
+          </div>
+        </Modal>
+      )}
+      {overlay?.type === "social" && (
+        <Modal
+          title={`DART trên ${overlay.name}`}
+          onClose={() => setOverlay(null)}
+        >
+          <div className="empty-state">
+            <Icon name="instagram" size={38} />
+            <h3>Một góc nhỏ của DART.</h3>
+            <p>
+              @dart.studio là tên tài khoản dự kiến cho bản mẫu. Liên kết{" "}
+              {overlay.name} chính thức sẽ được cập nhật khi studio xác nhận tài
+              khoản.
+            </p>
+            <button
+              className="button button-outline"
+              onClick={() => setOverlay(null)}
+            >
+              Tiếp tục khám phá <Icon name="arrow" />
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
