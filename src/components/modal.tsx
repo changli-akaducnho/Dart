@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 type ModalProps = {
   title: string;
@@ -21,6 +21,17 @@ export function Modal({
   const closeRef = useRef(onClose);
   const titleId = useId();
   const startedOnBackdrop = useRef(false);
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestClose = () => {
+    if (closeTimer.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      closeRef.current();
+      return;
+    }
+    setClosing(true);
+    closeTimer.current = setTimeout(() => closeRef.current(), 180);
+  };
 
   useEffect(() => {
     closeRef.current = onClose;
@@ -35,6 +46,7 @@ export function Modal({
     dialog.showModal();
 
     return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
       dialog.close();
       document.body.style.overflow = previousOverflow;
       if (previouslyFocused?.isConnected)
@@ -45,11 +57,11 @@ export function Modal({
   return (
     <dialog
       ref={dialogRef}
-      className={`dialog${wide ? " dialog-wide" : ""}`}
+      className={`dialog${wide ? " dialog-wide" : ""}${closing ? " is-closing" : ""}`}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
-        closeRef.current();
+        requestClose();
       }}
       onPointerDown={(event) => {
         startedOnBackdrop.current = event.target === event.currentTarget;
@@ -63,7 +75,7 @@ export function Modal({
             event.clientY < bounds.top ||
             event.clientY > bounds.bottom
           )
-            closeRef.current();
+            requestClose();
         }
         startedOnBackdrop.current = false;
       }}
@@ -75,7 +87,7 @@ export function Modal({
             className="icon-button"
             type="button"
             aria-label="Đóng cửa sổ"
-            onClick={onClose}
+            onClick={requestClose}
             autoFocus
           >
             <svg
@@ -93,7 +105,7 @@ export function Modal({
         </header>
         {notice}
       </div>
-      <div className="dialog-body">{children}</div>
+      <div className="dialog-body" key={title}>{children}</div>
     </dialog>
   );
 }

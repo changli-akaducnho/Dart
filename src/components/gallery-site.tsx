@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { artworks, heroArtworkIds, type Artwork } from "@/data/artworks";
-import { categories, faqs, policies, testimonials } from "@/data/site-content";
+import { categories, faqs, policies } from "@/data/site-content";
 import { trackEvent } from "@/lib/analytics";
 import { CommissionForm, PurchaseForm } from "./inquiry-forms";
 import { Modal } from "./modal";
@@ -11,7 +11,9 @@ import { Icon } from "./icons";
 import { HeroGallery } from "./hero-gallery";
 import { ArtworkImages } from "./artwork-images";
 import { BookingNotice } from "./booking-notice";
-import { STUDIO_EMAIL, STUDIO_ZALO } from "@/data/studio";
+import { STUDIO_EMAIL, STUDIO_ZALO, STUDIO_PAGE } from "@/data/studio";
+import { PricingSection } from "./pricing-section";
+import { ReviewForm } from "./review-form";
 
 type Overlay =
   | { type: "commission"; source: string }
@@ -21,8 +23,7 @@ type Overlay =
   | { type: "cart" }
   | { type: "search" }
   | { type: "story" }
-  | { type: "policy"; key: string }
-  | { type: "social"; name: string };
+  | { type: "policy"; key: string };
 const price = (value: number | null) =>
   value === null
     ? "Liên hệ báo giá"
@@ -72,10 +73,6 @@ export function GallerySite() {
     setMenuOpen(false);
     setOverlay(null);
   };
-  const social = (name: string, source: string) => {
-    if (name === "Instagram") trackEvent("click_instagram", { source });
-    setOverlay({ type: "social", name });
-  };
   const filtered = collection.filter(
     (art) => category === "all" || art.category === category,
   );
@@ -103,6 +100,7 @@ export function GallerySite() {
               Artworks
             </a>
             <a href="#commission">Commission</a>
+            <a href="#pricing">Bảng giá</a>
             <a href="#about">About</a>
             <button onClick={() => contact("navigation")}>Contact</button>
           </nav>
@@ -167,6 +165,7 @@ export function GallerySite() {
             <a href="#about" onClick={() => setMenuOpen(false)}>
               About
             </a>
+            <a href="#pricing" onClick={() => setMenuOpen(false)}>Bảng giá</a>
             <button onClick={() => contact("navigation")}>Contact</button>
             <button
               className="button button-primary"
@@ -279,7 +278,7 @@ export function GallerySite() {
               {String(filtered.length).padStart(2, "0")} TÁC PHẨM
             </span>
           </div>
-          <div className="artwork-grid" aria-live="polite">
+          <div className="artwork-grid scene-enter" key={category} aria-live="polite">
             {filtered.map((art, index) => (
               <article className="artwork-card" key={art.id}>
                 <button
@@ -406,6 +405,8 @@ export function GallerySite() {
           </div>
         </section>
 
+        <PricingSection onBook={() => commission("pricing")} />
+
         <section
           className="why-section page-width"
           aria-label="Vì sao chọn DART"
@@ -453,14 +454,14 @@ export function GallerySite() {
         >
           <div className="story-image">
             <Image
-              src="/images/dart-studio.webp"
-              alt="Không gian sáng tạo với màu vẽ, cọ và tranh trong một xưởng nghệ thuật minh họa"
+              src="/images/artworks/p7.webp"
+              alt="Tranh chân dung nữ bằng chì màu P7 do DART thực hiện"
               fill
               sizes="(max-width: 767px) 90vw, 48vw"
-              className="object-cover"
+              className="object-contain studio-original"
             />
             <span className="image-caption">
-              STUDIO INSPIRATION · HÌNH ẢNH MINH HỌA
+              NÉT VẼ THẬT · CÂU CHUYỆN RIÊNG
             </span>
           </div>
           <div className="story-copy">
@@ -492,34 +493,15 @@ export function GallerySite() {
           </div>
         </section>
 
-        <section className="testimonials-section">
+        <section className="testimonials-section" id="reviews" aria-labelledby="reviews-title">
           <div className="page-width">
             <div className="section-heading">
               <div>
                 <p className="eyebrow">ART FINDS A HOME</p>
-                <h2>Khách hàng nói gì về DART</h2>
+                <h2 id="reviews-title">Khách hàng nói gì về DART</h2>
               </div>
-              <span className="sample-label">CÂU CHUYỆN MINH HỌA</span>
             </div>
-            <div className="testimonials-grid">
-              {testimonials.map((item) => (
-                <figure className="testimonial" key={item.id}>
-                  <span className="quote-mark">“</span>
-                  <blockquote>{item.quote}</blockquote>
-                  <figcaption>
-                    <span className="initials">{item.initials}</span>
-                    <span>
-                      <strong>{item.name}</strong>
-                      <small>{item.context}</small>
-                    </span>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-            <p className="demo-caption">
-              Nội dung mẫu để minh họa bố cục, chưa phải đánh giá từ khách hàng
-              thực tế.
-            </p>
+            <ReviewForm />
           </div>
         </section>
 
@@ -534,20 +516,21 @@ export function GallerySite() {
                 DART Studio<span className="serif-dot">.</span>
               </h2>
             </div>
-            <button
+            <a
               className="text-link"
-              onClick={() => social("Instagram", "studio")}
+              href={STUDIO_PAGE}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              <Icon name="instagram" size={18} />
-              Theo dõi @dart.studio <Icon name="arrow-up" size={17} />
-            </button>
+              Theo dõi DART trên Facebook <Icon name="arrow-up" size={17} />
+            </a>
           </div>
           <div className="studio-mosaic">
             {[
               {
-                image: "/images/dart-process.webp",
-                alt: "Quá trình vẽ tranh trong studio minh họa",
-                label: "The process",
+                image: "/images/artworks/c4.webp",
+                alt: "Tranh Diona do DART vẽ bằng chì màu",
+                label: "Diona",
               },
               {
                 image: artworks[3].image,
@@ -560,14 +543,16 @@ export function GallerySite() {
                 label: "Color stories",
               },
               {
-                image: "/images/dart-studio.webp",
-                alt: "Không gian xưởng vẽ minh họa bằng AI",
-                label: "Studio moments",
+                image: "/images/artworks/raiden.webp",
+                alt: "Tranh Raiden do DART thực hiện",
+                label: "Raiden",
               },
             ].map((item) => (
-              <button
+              <a
                 key={item.label}
-                onClick={() => social("Instagram", "studio_gallery")}
+                href={STUDIO_PAGE}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="studio-tile"
                 aria-label={`${item.label} — DART Studio`}
               >
@@ -576,18 +561,17 @@ export function GallerySite() {
                   alt={item.alt}
                   fill
                   sizes="(max-width: 600px) 44vw, 24vw"
-                  className="object-cover"
+                  className="object-contain studio-original"
                 />
                 <span>
                   {item.label}
                   <Icon name="arrow-up" size={17} />
                 </span>
-              </button>
+              </a>
             ))}
           </div>
           <p className="demo-caption">
-            Tác phẩm thật từ DART; hình ảnh không gian và quá trình sáng tạo
-            minh họa bằng AI.
+            Những tác phẩm được vẽ tay và chụp lại bởi DART.
           </p>
         </section>
 
@@ -668,14 +652,13 @@ export function GallerySite() {
                 Đặt tranh riêng
               </button>
               <a href="#about">Về DART</a>
+              <a href="#pricing">Bảng giá</a>
+              <a href="#reviews">Đánh giá</a>
             </div>
             <div className="footer-column">
               <h3>KẾT NỐI</h3>
-              {["Instagram", "Facebook", "TikTok"].map((name) => (
-                <button key={name} onClick={() => social(name, "footer")}>
-                  {name} <span aria-hidden="true">↗</span>
-                </button>
-              ))}
+              <a href={STUDIO_PAGE} target="_blank" rel="noopener noreferrer" onClick={() => trackEvent("click_contact", { source: "footer_facebook" })}>Facebook ↗</a>
+              <a href={STUDIO_ZALO} target="_blank" rel="noopener noreferrer">Zalo ↗</a>
             </div>
             <div className="footer-column footer-contact">
               <h3>MỘT CUỘC TRÒ CHUYỆN?</h3>
@@ -886,7 +869,7 @@ export function GallerySite() {
             <Icon name="bag" size={48} />
             <h3>Một chỗ trống cho điều bạn yêu.</h3>
             <p>
-              Giỏ hàng đang trống. Ở phiên bản này, bạn có thể gửi yêu cầu mua
+              Giỏ hàng đang trống. Bạn có thể gửi yêu cầu mua
               trực tiếp từ mỗi tác phẩm để bắt đầu trao đổi.
             </p>
             <a
@@ -919,7 +902,7 @@ export function GallerySite() {
                 <a href={STUDIO_ZALO} target="_blank" rel="noopener noreferrer">
                   trao đổi qua Zalo
                 </a>{" "}
-                để được studio tư vấn trực tiếp.
+                hoặc <a href={STUDIO_PAGE} target="_blank" rel="noopener noreferrer">Facebook</a> để được studio tư vấn trực tiếp.
               </p>
             </div>
             <button
@@ -942,7 +925,7 @@ export function GallerySite() {
         >
           <div className="prose">
             <p>
-              DART được hình dung như một studio nhỏ dành cho những người muốn
+              DART là một studio nhỏ dành cho những người muốn
               sống cùng nghệ thuật. Một tác phẩm không nhất thiết phải lớn lao:
               nó có thể giữ lại ánh sáng của một buổi chiều, nét mặt người thân
               hay một nơi chốn đặc biệt.
@@ -955,10 +938,6 @@ export function GallerySite() {
               Tranh có sẵn dành cho những rung động tình cờ. Tranh đặt riêng
               dành cho những điều chưa có hình hài. Cả hai đều bắt đầu từ một
               kết nối cá nhân.
-            </p>
-            <p className="form-note">
-              Nội dung giới thiệu mẫu. Thông tin nghệ sĩ, hình ảnh studio và câu
-              chuyện thương hiệu cần được xác nhận trước khi phát hành.
             </p>
             <button
               className="button button-primary"
@@ -978,28 +957,6 @@ export function GallerySite() {
             {policies[overlay.key].paragraphs.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
-          </div>
-        </Modal>
-      )}
-      {overlay?.type === "social" && (
-        <Modal
-          title={`DART trên ${overlay.name}`}
-          onClose={() => setOverlay(null)}
-        >
-          <div className="empty-state">
-            <Icon name="instagram" size={38} />
-            <h3>Một góc nhỏ của DART.</h3>
-            <p>
-              @dart.studio là tên tài khoản dự kiến cho bản mẫu. Liên kết{" "}
-              {overlay.name} chính thức sẽ được cập nhật khi studio xác nhận tài
-              khoản.
-            </p>
-            <button
-              className="button button-outline"
-              onClick={() => setOverlay(null)}
-            >
-              Tiếp tục khám phá <Icon name="arrow" />
-            </button>
           </div>
         </Modal>
       )}

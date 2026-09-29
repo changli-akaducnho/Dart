@@ -5,7 +5,7 @@ export const BOOKING_CATEGORIES = [
   "Thú cưng",
   "Custom Concept",
 ] as const;
-export const BOOKING_SIZES = ["A4", "A3"] as const;
+export const BOOKING_SIZES = ["A5", "A4"] as const;
 export const BOOKING_BUDGETS = [
   "Dưới 1 triệu",
   "1–2 triệu",
@@ -36,6 +36,7 @@ export type Booking = {
   name: string;
   phone: string;
   email: string;
+  address: string;
   dimensions: string;
   desiredDate: string;
   category: string;
@@ -63,6 +64,7 @@ export function validateBooking(data: FormData, now = new Date()): Booking {
     name: read("name", 100),
     phone: read("phone", 24),
     email: read("email", 200),
+    address: read("address", 500),
     dimensions: read("dimensions", 10),
     desiredDate: read("desiredDate", 10),
     category: read("category", 80),
@@ -77,8 +79,10 @@ export function validateBooking(data: FormData, now = new Date()): Booking {
     throw new Error("Vui lòng nhập số điện thoại hợp lệ.");
   if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(booking.email))
     throw new Error("Vui lòng nhập email hợp lệ.");
+  if (booking.address.length < 10)
+    throw new Error("Vui lòng nhập địa chỉ nhận hàng đầy đủ (ít nhất 10 ký tự).");
   if (!BOOKING_SIZES.some((size) => size === booking.dimensions))
-    throw new Error("Vui lòng chọn khổ A3 hoặc A4.");
+    throw new Error("Vui lòng chọn khổ A5 hoặc A4.");
   const date = new Date(`${booking.desiredDate}T00:00:00Z`);
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(booking.desiredDate) ||

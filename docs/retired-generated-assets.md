@@ -1,5 +1,7 @@
 # Generated image assets
 
+Retired on 2026-09-30. Both WebP assets were removed from the website at the studio's request. This file preserves historical provenance only; all current website images use supplied artwork photographs.
+
 Mode: built-in `image_gen.imagegen`. Generated 2026-09-28 in a parallel two-asset batch, one call per image, with no retries. Both use opaque backgrounds. The delivered assets are compressed WebP images at 1,254 × 1,254 pixels. Original PNGs are retained under `C:/Users/duc/.codex/generated_images/` at the exact paths below; redundant PNG copies were removed from the public asset directory after matching their SHA-256 hashes to these originals and decoding the final WebP files successfully.
 
 ## Studio

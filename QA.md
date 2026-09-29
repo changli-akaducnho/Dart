@@ -66,6 +66,21 @@ Initial browser validation: 2026-09-28 in Codex Chromium on Windows. Later chang
 - Started the previously built OpenNext Worker in local Wrangler preview on port 8787: self-binding `dart` connected; home/static image/optimized image returned 200, production analytics returned 404, and invalid booking returned 400. Stopped this temporary preview afterward and left the main background server on port 3000 running.
 - Updated run instructions: the background launcher window can close safely; Windows restart still requires launching again. No Windows startup service or public deployment was added. An external Cloudflare URL was not supplied, so this pass does not verify the live hosted deployment.
 
-## Scope
+## Follow-up availability diagnosis — 2026-09-29, 21:45 local time
+
+- The previously detached server had exited between sessions: no Next process and no listener on 3000; the HTTP client received connection refused. Windows had not restarted. The final server log entries were successful 200 responses, with no application exception; no matching Node crash event was found in the recent Application log. The cause of process termination is not established.
+- The earlier successful checks only established availability during that session, not continued availability after it. Documentation now states that limitation and gives a foreground command to run in the user's own PowerShell window.
+- A new hidden `Start-Process` launch was rejected by the tool's automatic policy review with no detailed reason. A regular foreground terminal launch succeeded; home, artwork and analytics HTTP checks returned 200. This does not establish persistence after the current agent session.
+
+## Studio content and booking update — 2026-09-30
+
+- Read `giá.xlsx` Sheet1 A1:C31: 9 priced artwork rows, custom-product note, 3 timing options, 12 additional charges, and shipping information. Preserved A5/A4 values and percentage surcharges; no fabricated price for blank/dash cells. User confirmed switching booking sizes to A5/A4. Historical portfolio prices remain unchanged.
+- Added the supplied Facebook URL, mandatory delivery address in both booking forms/API/email, and free-shipping information for Quận 10, Quận 11 and Tân Bình. Removed generated image files from public storage and reused supplied artwork photos. Removed sample testimonials and unfinished legal/returns dialogs; kept ordering and shipping information.
+- Added 1–5 star private feedback sent to the studio through `/api/reviews`. Feedback is not auto-published and no public reviews/database are fabricated. SMTP failure retains client inputs. No real email was sent during testing.
+- All 21 automated tests passed, including booking address validation/email content and review input validation, bounded request bodies, recipient control, throttling and missing-credentials/SMTP-error paths. ESLint and TypeScript passed. `npm run build:cloudflare` completed and generated the Worker with both email routes.
+- Headless Edge checks at 1440, 390 and 320 px passed: correct pricing and Facebook links, no generated images in DOM, both address fields, only A5/A4, conditional Custom Concept requirements, review failure preservation/success, no horizontal overflow, reduced-motion behavior and no page errors. Inspected pricing, reviews and booking screenshots in ignored `qa-results/`.
+- Local `.env.local` still has no configured Gmail App Password. Real booking/review delivery remains dependent on Gmail configuration and inbox verification. No Git push or Cloudflare deployment performed.
+
+## Verification limits
 
 This MVP now includes a server email endpoint; analytics remain browser-local. Tests use synthetic example.test contacts and a mocked mail transport. No real orders, payments or external email deliveries occurred during verification. The initial responsive inspection used Chromium viewport emulation, not physical devices or Safari/Firefox. Native semantic controls and reduced-motion styles are implemented; no claim of full accessibility certification or a measured Lighthouse score is made.

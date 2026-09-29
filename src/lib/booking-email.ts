@@ -1,4 +1,4 @@
-import { STUDIO_EMAIL } from "../data/studio";
+import { SHIPPING_NOTE, STUDIO_EMAIL } from "../data/studio";
 import type { Booking } from "./booking";
 
 export function bookingEmail(
@@ -26,6 +26,8 @@ export function bookingEmail(
       `Họ tên: ${booking.name}`,
       `Điện thoại / Zalo: ${booking.phone}`,
       `Email: ${booking.email}`,
+      `Địa chỉ nhận hàng: ${booking.address}`,
+      `Vận chuyển: ${SHIPPING_NOTE}`,
       "",
       "THÔNG TIN ĐẶT TRANH",
       ...(booking.type === "commission"

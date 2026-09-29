@@ -10,11 +10,12 @@ export function ArtworkImages({ artwork }: { artwork: Artwork }) {
     <div className="detail-media">
       <div className="detail-image">
         <Image
+          key={images[selected]}
           src={images[selected]}
           alt={`${artwork.title} — ảnh ${selected + 1}`}
           fill
           sizes="(max-width: 700px) 85vw, 440px"
-          className="object-contain"
+          className="object-contain scene-enter"
         />
       </div>
       {images.length > 1 && (

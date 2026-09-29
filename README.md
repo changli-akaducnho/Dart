@@ -21,6 +21,15 @@ The launcher reuses a healthy DART server on port 3000, waits until the home pag
 
 After restarting Windows, run the launcher again. Background mode does not make a local URL a publicly hosted website and does not install a Windows startup service.
 
+The background process was observed to stop between Codex sessions without an application error in its log. Persistence beyond the agent session is therefore not guaranteed. For local use independent of Codex, open your own PowerShell window, run the following, and keep that window open:
+
+```powershell
+Set-Location -LiteralPath 'D:\Dart'
+npm.cmd run dev -- --hostname 127.0.0.1 --port 3000
+```
+
+If DART is already running on port 3000, use the existing page instead of starting a second server.
+
 After moving the project, run `npm.cmd run build` from the new folder before using `npm.cmd start`: generated production files contain absolute paths from the folder where they were built. Images and application imports use project-relative paths.
 
 ### Other environments
@@ -57,7 +66,9 @@ The production server returns **404** for `/analytics`. The dashboard is deliber
 | `src/components/icons.tsx`                                                                    | Small reusable inline icon set; no icon dependency                                                               |
 | `src/components/analytics-dashboard.tsx`                                                      | Metrics, session rates, recent events and CSV export                                                             |
 | `src/data/artworks.ts`                                                                        | Twenty typed DART catalog records, status and price data, image lists and hero selection                         |
-| `src/data/site-content.ts`                                                                    | Editable category labels, sample testimonials, FAQ and policy copy                                               |
+| `src/data/site-content.ts`                                                                    | Category labels, FAQ, ordering and shipping information                                                         |
+| `src/data/pricing.ts`, `src/components/pricing-section.tsx`                                    | A5/A4 price list and surcharges transcribed from the studio's giá.xlsx                                             |
+| `src/components/review-form.tsx`, `src/lib/review.ts`, `src/app/api/reviews/route.ts`             | Private customer feedback form, validation and studio email delivery                                             |
 | `src/lib/analytics.ts`                                                                        | Anonymous event recording, session IDs, storage fallback and provider adapters                                   |
 | `src/lib/submissions.ts`                                                                      | Legacy local test storage; no longer used by booking forms                                                        |
 | `src/app/api/bookings/route.ts`                                                               | Validates bookings and sends email with reference attachments through Gmail                                      |
@@ -65,7 +76,7 @@ The production server returns **404** for `/analytics`. The dashboard is deliber
 | `src/data/studio.ts`, `src/components/booking-notice.tsx`                                       | Studio contacts and persistent booking notice                                                                    |
 | `public/images/artworks/`                                                                     | Optimized WebP copies of the supplied artwork and product photographs                                            |
 | `Picture/`                                                                                    | Preserved original source images supplied by the studio                                                          |
-| `public/images/`                                                                              | Local studio illustration assets and their generation prompts                                                    |
+| `public/images/`                                                                              | Real artwork photographs and source notes                                                                       |
 | `public/icon.svg`                                                                             | DART favicon                                                                                                     |
 | `package.json`, `package-lock.json`                                                           | Commands and locked dependencies                                                                                 |
 | `tsconfig.json`, `next-env.d.ts`, `next.config.ts`, `postcss.config.mjs`, `eslint.config.mjs` | Framework, TypeScript, Tailwind and lint configuration                                                           |
@@ -90,7 +101,7 @@ Keep `status`, `available` and `price` consistent:
 
 Supplied original artwork and product photographs remain in `Picture/`. Optimized WebP copies are served from `public/images/artworks/`; changing web assets does not alter the originals. To add or replace an image, save an optimized copy in that folder and update `image` and, when relevant, `images` in the data record. These are studio-supplied source images; no third-party artwork citation fields or attribution metadata are required. Gallery, hero and main detail images use `object-contain` to preserve the complete composition. Next.js supplies responsive image optimization and lazy loading, with priority given to the first hero image; fixed image containers reserve layout space.
 
-The studio illustrations `/images/dart-studio.webp` and `/images/dart-process.webp` remain separate from the actual catalog photographs. They are original AI-generated illustrative assets, with prompts and original paths recorded in `public/images/GENERATED.md`. Update their alt text and captions when replacing them with studio photographs.
+All website imagery uses supplied real artwork photographs, including reused images in the story and studio sections. The two generated illustrations were removed from public assets. Their historical provenance is retained outside public storage in `docs/retired-generated-assets.md`.
 
 ## Conversion tracking
 
@@ -129,20 +140,24 @@ To enable actual sending:
 
 Until configured, sending returns a truthful error and offers Zalo; the page never pretends a request was sent. SMTP acceptance does not guarantee inbox placement: verify Gmail receipt after setup. No real email was sent during automated tests; the mail transport is mocked.
 
-Rules apply in the browser and API: A3/A4 only; desired delivery at least seven calendar days after today in `Asia/Ho_Chi_Minh`; Custom Concept requires an idea of at least ten characters and a reference image. Other categories allow both fields to be omitted. JPG, PNG and WebP attachments are limited to 5 MB; the API checks binary type signatures against the declared MIME type, with a 6 MB cap on the full request. Files are attached from memory, not saved to public storage. The advisory recommends ordering a month ahead and remains at the top of the booking dialog while scrolling; customers can collapse it on small screens.
+Rules apply in the browser and API: A5/A4 only (confirmed by the studio on 2026-09-30); a full delivery address is required for both commission and purchase inquiries and included in the email. Desired delivery must be at least seven calendar days after today in `Asia/Ho_Chi_Minh`; Custom Concept requires an idea of at least ten characters and a reference image. Other categories allow both fields to be omitted. JPG, PNG and WebP attachments are limited to 5 MB; the API checks binary type signatures against the declared MIME type, with a 6 MB cap on the full request. Files are attached from memory, not saved to public storage. The advisory recommends ordering a month ahead and remains at the top of the booking dialog while scrolling; customers can collapse it on small screens.
 
 New requests are not stored in localStorage. The old `dart.submissions.v1` test data, if present, can be removed through browser site settings. Analytics remain anonymous and browser-local. Failed email attempts preserve form inputs. The API includes a same-origin check and a bounded in-memory per-email throttle; use shared rate limiting and abuse controls for a public, multi-instance deployment.
 
-The Facebook page is pending. Set `NEXT_PUBLIC_STUDIO_PAGE_URL` when supplied, then restart/rebuild. Zalo is already linked in the booking notice and error state.
+The Facebook page defaults to `https://www.facebook.com/profile.php?id=61594562686908`. `NEXT_PUBLIC_STUDIO_PAGE_URL` can override it at build time; leaving it blank uses the studio's supplied URL. Facebook and Zalo are linked in booking information, contact, footer and the pricing section.
+
+Shipping is free in the Quận 10, Quận 11 and Tân Bình areas of TP.HCM. Customers pay shipping elsewhere after the studio confirms the fee. The price table preserves all supplied A5/A4 prices and additional charges; missing prices are shown as “Liên hệ”, not zero. Rush requests (4–5 days +15%, 72 hours +60%) go through direct contact, while the form keeps the seven-day minimum. Portfolio prices are historical and remain unchanged.
+
+Customer reviews use `POST /api/reviews` and the same Gmail configuration. Validated names, email addresses, 1–5 star ratings and comments are sent privately to the studio. The form only confirms after SMTP acceptance; failures preserve the entered feedback. There is no public review database or automatic publication. Fabricated sample testimonials and unfinished legal/returns dialogs were removed; ordering and shipping information remains. Review rate limiting is bounded but per-instance, like booking throttling.
 
 Run `npm test` for booking rule, email format, attachment and API failure-path tests without sending email.
 
 ## Before publishing publicly
 
 1. Review the integrated DART catalog, confirm measurements and materials, and keep prices and availability current. Supply the missing dimensions and confirm a price before enabling purchase inquiries for Akaza or Raiden.
-2. Replace sample reviews with permissioned real reviews, or remove that section. Replace/verify brand story and studio imagery.
-3. Studio email is `dartspacestudio@gmail.com`; the fixed Zalo button links to `https://zalo.me/0963549673`. Configure Gmail sending as above and supply the remaining social URLs. The Facebook page is pending.
-4. Confirm commission timing, revisions, shipping, return and ordering terms in `src/data/site-content.ts`.
+2. Publish genuine customer feedback only with permission; the current review form sends private feedback to the studio.
+3. Studio email is `dartspacestudio@gmail.com`; Zalo links to `https://zalo.me/0963549673` and Facebook uses the supplied official page. Configure Gmail sending as above.
+4. Keep pricing, revision charges, shipping and ordering information current in `src/data/pricing.ts`, `src/data/studio.ts` and `src/data/site-content.ts`.
 5. Set `NEXT_PUBLIC_SITE_URL` to the actual HTTPS origin before the production build; review metadata in `layout.tsx`. Open Graph title/description are included; there is no fabricated social card.
 6. Configure Gmail credentials, verify a real booking reaches the inbox, and confirm hosting upload/time limits cover the 5 MB attachment limit. Set up shared throttling and monitoring appropriate for public traffic. The email request is an inquiry; staff confirm stock, size, price and delivery separately.
 7. Connect an analytics provider if you need cross-browser conversion results. Configure appropriate privacy/consent behavior for the audience.

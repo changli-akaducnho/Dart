@@ -124,6 +124,7 @@ export function HeroGallery({
       </button>
       <figcaption
         className="carousel-caption"
+        key={active.id}
         aria-live={playing ? "off" : "polite"}
       >
         <span>

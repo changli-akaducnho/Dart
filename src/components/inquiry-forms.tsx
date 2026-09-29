@@ -18,7 +18,7 @@ import {
   minimumBookingDate,
   validateBooking,
 } from "@/lib/booking";
-import { STUDIO_EMAIL, STUDIO_ZALO } from "@/data/studio";
+import { SHIPPING_NOTE, STUDIO_EMAIL, STUDIO_ZALO } from "@/data/studio";
 
 type FormStatus = "idle" | "saving" | "success" | "error";
 type ArtworkSummary = { id: string; title: string; price: number };
@@ -107,6 +107,23 @@ function ContactFields({ prefix }: { prefix: string }) {
           maxLength={200}
         />
       </div>
+      <div className="field field-full">
+        <label htmlFor={`${prefix}-address`}>
+          Địa chỉ nhận hàng <span aria-hidden="true">*</span>
+        </label>
+        <textarea
+          id={`${prefix}-address`}
+          name="address"
+          autoComplete="street-address"
+          placeholder="Số nhà, tên đường, phường/xã, khu vực/quận và tỉnh/thành phố"
+          rows={3}
+          required
+          minLength={10}
+          maxLength={500}
+          aria-describedby={`${prefix}-shipping`}
+        />
+        <p className="shipping-note" id={`${prefix}-shipping`}>{SHIPPING_NOTE}</p>
+      </div>
     </>
   );
 }
@@ -129,7 +146,7 @@ function SizeAndDateFields({ prefix }: { prefix: string }) {
           </option>
           {BOOKING_SIZES.map((size) => (
             <option key={size} value={size}>
-              {size} — {size === "A4" ? "21 × 29,7 cm" : "29,7 × 42 cm"}
+              {size} — {size === "A4" ? "21 × 29,7 cm" : "14,8 × 21 cm"}
             </option>
           ))}
         </select>

@@ -5,6 +5,7 @@ import { minimumBookingDate, validateBooking } from "../src/lib/booking";
 import { bookingEmail } from "../src/lib/booking-email";
 import { STUDIO_EMAIL } from "../src/data/studio";
 import { POST } from "../src/app/api/bookings/route";
+import { POST as postReview } from "../src/app/api/reviews/route";
 
 const previousPassword = process.env.GMAIL_APP_PASSWORD;
 process.env.GMAIL_APP_PASSWORD = "test-only-not-a-real-password";
@@ -38,6 +39,7 @@ function form(overrides: Record<string, string | undefined> = {}) {
     name: "Khách kiểm thử",
     phone: "0901234567",
     email: `booking-${++sequence}@example.test`,
+    address: "123 Đường kiểm thử, Phường 1, Quận 10, TP.HCM",
     category: "Chân dung",
     dimensions: "A4",
     budget: "Dưới 1 triệu",
@@ -90,11 +92,11 @@ test("exactly seven days is accepted; six days and invalid dates are rejected", 
     assert.throws(() => validateBooking(form({ desiredDate }), now), /7 ngày/);
   }
 });
-test("only A3 and A4 are allowed", () => {
-  for (const dimensions of ["A3", "A4"])
+test("only A5 and A4 are allowed", () => {
+  for (const dimensions of ["A5", "A4"])
     assert.doesNotThrow(() => validateBooking(form({ dimensions })));
-  for (const dimensions of ["A2", "60x80", ""])
-    assert.throws(() => validateBooking(form({ dimensions })), /A3 hoặc A4/);
+  for (const dimensions of ["A3", "A2", "60x80", ""])
+    assert.throws(() => validateBooking(form({ dimensions })), /A5 hoặc A4/);
 });
 test("all ordinary categories allow missing reference and short or empty ideas", () => {
   for (const category of [
@@ -153,6 +155,8 @@ test("email template contains the structured booking and a fixed studio recipien
     booking.name,
     booking.phone,
     booking.email,
+    booking.address,
+    "Quận 10",
     "06/10/2099",
     "A4",
     "Tranh tông xanh",
@@ -203,9 +207,61 @@ test("API enforces validation even when client-side fields are bypassed", async 
     { dimensions: "A2" },
     { desiredDate: "2020-01-01" },
     { category: "Custom Concept" },
+    { address: "" },
+    { address: "   " },
+    { address: "a".repeat(501) },
   ]) {
     assert.equal((await POST(request(form(overrides)))).status, 400);
   }
+});
+
+test("purchase inquiries also require the delivery address", async () => {
+  const response = await POST(request(form({ type: "purchase", artworkId: "cc1", address: undefined })));
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /địa chỉ/);
+});
+
+const reviewRequest = (overrides: Record<string, unknown> = {}) => new Request("http://localhost:3000/api/reviews", {
+  method: "POST",
+  headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+  body: JSON.stringify({ name: "Khách kiểm thử", email: `review-${++sequence}@example.test`, rating: 4, comment: "Tranh đẹp và trao đổi rõ ràng.", ...overrides }),
+});
+
+test("reviews are emailed privately to the studio and cannot change the recipient", async () => {
+  const response = await postReview(reviewRequest({ to: "other@example.test" }));
+  assert.equal(response.status, 200);
+  assert.match((await response.json()).id, /^REVIEW-/);
+  assert.equal(mail?.to, STUDIO_EMAIL);
+  assert.match(String(mail?.text), /4\/5 sao/);
+  assert.match(String(mail?.text), /Tranh đẹp và trao đổi rõ ràng/);
+  assert.match(String(mail?.text), /Không tự động đăng công khai/);
+});
+
+test("reviews reject invalid fields, foreign origins and oversized request bodies", async () => {
+  for (const data of [{ rating: 0 }, { rating: 6 }, { rating: 1.5 }, { rating: "5" }, { email: "bad" }, { name: "x" }, { comment: " " }, { comment: "x".repeat(2001) }])
+    assert.equal((await postReview(reviewRequest(data))).status, 400);
+  const foreign = reviewRequest();
+  foreign.headers.set("origin", "https://other.example");
+  assert.equal((await postReview(foreign)).status, 403);
+  const wrongType = reviewRequest();
+  wrongType.headers.set("content-type", "text/plain");
+  assert.equal((await postReview(wrongType)).status, 415);
+  assert.equal((await postReview(reviewRequest({ comment: "x".repeat(17000) }))).status, 413);
+});
+
+test("reviews report missing credentials and SMTP failures without false success", async () => {
+  delete process.env.GMAIL_APP_PASSWORD;
+  try { assert.equal((await postReview(reviewRequest())).status, 503); }
+  finally { process.env.GMAIL_APP_PASSWORD = "test-only-not-a-real-password"; }
+  rejectMail = true;
+  try { assert.equal((await postReview(reviewRequest())).status, 502); }
+  finally { rejectMail = false; }
+});
+
+test("repeat reviews from one email are throttled", async () => {
+  const email = "repeated-review@example.test";
+  for (let i = 0; i < 3; i++) assert.equal((await postReview(reviewRequest({ email }))).status, 200);
+  assert.equal((await postReview(reviewRequest({ email }))).status, 429);
 });
 test("missing credentials never produce a false success", async () => {
   delete process.env.GMAIL_APP_PASSWORD;

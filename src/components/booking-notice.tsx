@@ -1,10 +1,11 @@
-import { STUDIO_PAGE, STUDIO_ZALO } from "@/data/studio";
+import { SHIPPING_NOTE, STUDIO_PAGE, STUDIO_ZALO } from "@/data/studio";
 
 export function BookingNotice() {
   return (
     <details className="booking-notice" open>
       <summary>Lưu ý khi đặt tranh</summary>
       <ul>
+        <li>{SHIPPING_NOTE}</li>
         <li>
           Nên đặt trước <strong>1 tháng</strong> để tránh rủi ro về thời gian.
           Ngày nhận mong muốn phải cách hôm nay ít nhất 7 ngày.
