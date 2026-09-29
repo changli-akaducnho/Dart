@@ -4,20 +4,22 @@ A responsive Vietnamese art studio MVP built with Next.js App Router, React, Typ
 
 ## Run locally
 
-Use Node.js 20.9+ (Node 24 was used for validation).
+Use Node.js 22+ (Node 24 was used for validation), including for the Cloudflare toolchain.
 
 ### Windows: current folder `D:\Dart`
 
-Double-click `start-dart.cmd` in the project folder. After **Ready** appears, open http://127.0.0.1:3000 and keep the terminal window open. The launcher uses its own folder, so it continues to work if the project moves again. It installs locked dependencies with `npm ci` only when Next.js is missing.
+Double-click `start-dart.cmd` in the project folder. After **Ready** appears, open http://127.0.0.1:3000. The server now runs in the background, so closing the launcher window does not stop the website. The launcher uses its own folder, so it continues to work if the project moves again. It installs locked dependencies with `npm ci` only when Next.js is missing.
 
 Alternatively, start it from PowerShell:
 
 ```powershell
 Set-Location -LiteralPath 'D:\Dart'
-npm.cmd run dev -- --hostname 127.0.0.1 --port 3000
+npm.cmd run local
 ```
 
-If the browser reports that it cannot connect, start the server using one of these methods. A local website is available only while its server is running. If the terminal reports that port 3000 is occupied, first check the existing page at that address.
+The launcher reuses a healthy DART server on port 3000, waits until the home page responds before showing Ready, and reports an error if another application owns that port. Server output is saved in `.local/server.log` (ignored by Git). `npm run dev` remains available for foreground development; that mode stops when its terminal is closed.
+
+After restarting Windows, run the launcher again. Background mode does not make a local URL a publicly hosted website and does not install a Windows startup service.
 
 After moving the project, run `npm.cmd run build` from the new folder before using `npm.cmd start`: generated production files contain absolute paths from the folder where they were built. Images and application imports use project-relative paths.
 
@@ -151,3 +153,22 @@ No public deployment was performed. The project is ready to run locally and to e
 ## Validation
 
 See `QA.md` for checks performed, observed behavior, and scope limits.
+
+## Cloudflare Workers deployment
+
+The committed `wrangler.jsonc` sets both the Worker `name` and `WORKER_SELF_REFERENCE.service` to **dart**. The package name is also `dart`, so a future migration cannot derive the previous `dart-art-studio` name. Do not override the Worker name to a different value in a deploy command without also updating the self-binding. See the [OpenNext configuration guide](https://opennext.js.org/cloudflare/get-started).
+
+The OpenNext adapter and Wrangler versions are recorded in `package-lock.json`. Use `npm ci` in CI, and commit `wrangler.jsonc`, `open-next.config.ts`, `package.json`, `package-lock.json`, `public/_headers` and the updated ignore/configuration files together. `.open-next/`, `.wrangler/`, `.env.local` and local `.dev.vars` files are generated or private and must not be committed.
+
+Cloudflare Workers Builds settings for this repository:
+
+- Root directory: repository root.
+- Worker name: `dart`.
+- Build command: `npm run build:cloudflare`.
+- Deploy command: `npx opennextjs-cloudflare deploy`.
+
+For a local preview, use `npm run preview`. For a deliberate manual release, `npm run deploy` performs both build and deployment. The ordinary `npm run build` remains a Next.js build; OpenNext calls it internally, so it must not recursively invoke the Cloudflare build script.
+
+This setup does not provision an R2 bucket. The current site uses local catalog data and has no ISR/revalidation workflow. If those features are added, configure the appropriate [OpenNext cache storage](https://opennext.js.org/cloudflare/caching).
+
+Set the public site URL and optional Facebook URL for the production build. Keep the actual Gmail credentials in `.env.local` for local development; on Cloudflare, configure `GMAIL_USER` and `GMAIL_APP_PASSWORD` as Worker secrets instead of committing them or adding them to `wrangler.jsonc`. The name/binding fix does not verify live Gmail delivery on the Workers runtime.

@@ -47,6 +47,25 @@ Initial browser validation: 2026-09-28 in Codex Chromium on Windows. Later chang
 - Booking notices sit inside the sticky dialog heading on both purchase and commission forms. They can be collapsed and have a bounded scroll area on short viewports. This update was checked through source, unit/API tests and HTTP, not a new visual browser pass.
 - **Activation pending:** `GMAIL_APP_PASSWORD` is empty. Gmail receipt has not been verified. All successful email tests used a mocked mail transport; no real email was sent. Studio must enable Google 2-Step Verification, generate an App Password, fill `.env.local` and restart the server.
 
+## Cloudflare Worker name correction — 2026-09-29
+
+- The local repository initially had no Wrangler/OpenNext configuration. Added committed configuration with `name: "dart"` and `WORKER_SELF_REFERENCE.service: "dart"`; aligned the package name so future generated defaults match.
+- Installed `@opennextjs/cloudflare` 1.20.7 and Wrangler 4.143.0, recorded in the lockfile. Added Cloudflare build/preview/deploy scripts, static asset cache headers and generated-file exclusions. No R2 bucket or other cloud resource was created.
+- `npm run build:cloudflare` passed on Windows and produced `.open-next/worker.js`. OpenNext emitted its usual Windows compatibility warning, but this build completed successfully.
+- `wrangler deploy --dry-run` passed: 69 assets detected, Worker bundle 5,266.41 KiB (gzip 1,103.25 KiB), and bindings explicitly reported `WORKER_SELF_REFERENCE (dart)`, `IMAGES` and `ASSETS`. This was a local packaging check, not a remote deployment or verification of account-specific settings.
+- ESLint, TypeScript, all 16 booking tests and `git diff --check` passed. `.env.local` remains ignored and untracked; no `.env` files were present in the generated OpenNext output.
+- `npm audit` reports four moderate toolchain advisories through OpenNext/Wrangler/Miniflare/Undici, no high or critical issues. npm's suggested remediation downgrades the adapter/CLI to versions outside the installed adapter's Wrangler peer requirement, so no forced downgrade was applied as part of this name fix.
+- No Git push or Cloudflare release was performed. Workers Builds should use `npm run build:cloudflare` for build and `npx opennextjs-cloudflare deploy` for deployment, targeting Worker `dart`.
+
+## Local availability repair — 2026-09-29
+
+- Reproduced connection refusal at `127.0.0.1:3000`; there was no server listening and no running Next process. No application render failure was needed to explain the unavailable local page.
+- Added `scripts/start-local.mjs` and `npm run local`; updated `start-dart.cmd` to launch a detached, hidden Node server with logs in ignored `.local/server.log`. The launcher checks the actual DART home page before reporting Ready, reuses an existing healthy server, and refuses to replace an unrelated service on the same port.
+- Started successfully from `D:\` (outside the project), allowed the launcher process to exit, and confirmed the server remained reachable in subsequent commands. A second launch reused the same running server.
+- Local HTTP verification: home 200, 27 artwork/studio images present, 67 asset/route requests successful with no failures; invalid booking data returned the expected 400. ESLint, script syntax and all 16 booking tests passed.
+- Started the previously built OpenNext Worker in local Wrangler preview on port 8787: self-binding `dart` connected; home/static image/optimized image returned 200, production analytics returned 404, and invalid booking returned 400. Stopped this temporary preview afterward and left the main background server on port 3000 running.
+- Updated run instructions: the background launcher window can close safely; Windows restart still requires launching again. No Windows startup service or public deployment was added. An external Cloudflare URL was not supplied, so this pass does not verify the live hosted deployment.
+
 ## Scope
 
 This MVP now includes a server email endpoint; analytics remain browser-local. Tests use synthetic example.test contacts and a mocked mail transport. No real orders, payments or external email deliveries occurred during verification. The initial responsive inspection used Chromium viewport emulation, not physical devices or Safari/Firefox. Native semantic controls and reduced-motion styles are implemented; no claim of full accessibility certification or a measured Lighthouse score is made.

@@ -5,7 +5,7 @@ if errorlevel 1 goto failed
 
 where node >nul 2>&1
 if errorlevel 1 (
-  echo Node.js is missing. Install Node.js 20.9 or newer, then try again.
+  echo Node.js is missing. Install Node.js 22 or newer, then try again.
   goto failed
 )
 where npm.cmd >nul 2>&1
@@ -21,9 +21,11 @@ if not exist "node_modules\next\dist\bin\next" (
 
 echo Starting DART from %CD%
 echo Open http://127.0.0.1:3000 after the Ready message.
-echo Keep this window open while using the site. Press Ctrl+C to stop.
-call npm.cmd run dev -- --hostname 127.0.0.1 --port 3000
+node "%~dp0scripts\start-local.mjs"
 if errorlevel 1 goto failed
+echo.
+echo The server runs in the background. This window can be closed.
+pause
 exit /b 0
 
 :failed
