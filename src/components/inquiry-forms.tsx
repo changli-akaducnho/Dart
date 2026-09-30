@@ -9,6 +9,7 @@ import {
   type FormEvent,
 } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { PaymentFields } from "./payment-fields";
 import {
   BOOKING_CATEGORIES,
   BOOKING_SIZES,
@@ -18,7 +19,7 @@ import {
   minimumBookingDate,
   validateBooking,
 } from "@/lib/booking";
-import { SHIPPING_NOTE, STUDIO_EMAIL, STUDIO_ZALO } from "@/data/studio";
+import { PURCHASE_DELIVERY_NOTE, SHIPPING_NOTE, STUDIO_EMAIL, STUDIO_ZALO } from "@/data/studio";
 
 type FormStatus = "idle" | "saving" | "success" | "error";
 type ArtworkSummary = { id: string; title: string; price: number };
@@ -47,8 +48,8 @@ function validateForm(form: HTMLFormElement) {
     )
       field.setCustomValidity("Hãy mô tả ý tưởng bằng ít nhất 10 ký tự.");
   }
-  const date = form.elements.namedItem("desiredDate") as HTMLInputElement;
-  date.min = minimumBookingDate();
+  const date = form.elements.namedItem("desiredDate");
+  if (date instanceof HTMLInputElement) date.min = minimumBookingDate();
   return form.reportValidity();
 }
 
@@ -175,6 +176,7 @@ function useBookingRequest() {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
+  const [confirmationAccepted, setConfirmationAccepted] = useState(false);
   const sending = useRef(false);
   async function send(data: FormData) {
     if (sending.current) return false;
@@ -201,6 +203,7 @@ function useBookingRequest() {
           result.error || "Chưa gửi được yêu cầu. Vui lòng thử lại.",
         );
       setBookingId(result.id);
+      setConfirmationAccepted(result.confirmationEmail === "accepted");
       setStatus("success");
       return true;
     } catch (error) {
@@ -219,6 +222,7 @@ function useBookingRequest() {
     status,
     error,
     bookingId,
+    confirmationAccepted,
     send,
     reset: () => {
       setStatus("idle");
@@ -241,9 +245,13 @@ function RequestError({ error }: { error: string }) {
 function SubmissionSuccess({
   onReset,
   bookingId,
+  confirmationAccepted,
+  purchase = false,
 }: {
   onReset: () => void;
   bookingId: string;
+  confirmationAccepted: boolean;
+  purchase?: boolean;
 }) {
   const successRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -258,11 +266,15 @@ function SubmissionSuccess({
       <h3>Yêu cầu của bạn đã được gửi.</h3>
       <p>
         Nhân viên tư vấn DART sẽ liên hệ trực tiếp qua thông tin bạn cung cấp để
-        hỗ trợ và xác nhận lịch nhận tranh.
+        {purchase ? "hỗ trợ đơn hàng." : "hỗ trợ và xác nhận lịch nhận tranh."}
       </p>
       <p className="form-note booking-id">
-        Mã yêu cầu: {bookingId}. Đơn hàng và ngày nhận tranh sẽ được chốt sau
-        khi tư vấn.
+        Mã yêu cầu: {bookingId}. {purchase ? PURCHASE_DELIVERY_NOTE : "Đơn hàng và ngày nhận tranh sẽ được chốt sau khi tư vấn."}
+      </p>
+      <p>
+        {confirmationAccepted
+          ? "Email xác nhận yêu cầu đã được gửi tới địa chỉ bạn cung cấp. Hãy kiểm tra cả Hộp thư đến và Thư rác."
+          : "Yêu cầu đã được gửi tới studio, nhưng chưa xác nhận gửi được email cho bạn. Hãy lưu mã yêu cầu; bạn không cần đặt lại. Nhân viên sẽ liên hệ tư vấn trực tiếp."}
       </p>
       <button type="button" className="button button-primary" onClick={onReset}>
         Tạo yêu cầu khác <span aria-hidden="true">↗</span>
@@ -280,7 +292,7 @@ export function CommissionForm({
   const started = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const ideaInput = useRef<HTMLTextAreaElement>(null);
-  const { status, error, bookingId, send, reset } = useBookingRequest();
+  const { status, error, bookingId, confirmationAccepted, send, reset } = useBookingRequest();
   const [category, setCategory] = useState("");
   const customConcept = category === "Custom Concept";
   const [reference, setReference] = useState<File | null>(null);
@@ -343,6 +355,7 @@ export function CommissionForm({
     return (
       <SubmissionSuccess
         bookingId={bookingId}
+        confirmationAccepted={confirmationAccepted}
         onReset={() => {
           reset();
           setCategory("");
@@ -363,12 +376,13 @@ export function CommissionForm({
         hay một góc nhà.
       </p>
       <p className="form-note">
-        Yêu cầu được gửi đến {STUDIO_EMAIL}. Các mục có * là bắt buộc.
+        Yêu cầu được gửi đến {STUDIO_EMAIL}, kèm email xác nhận gửi tới bạn. Các mục có * là bắt buộc.
       </p>
       <fieldset disabled={status === "saving"} className="form-fields">
         <legend className="sr-only">Thông tin đặt tranh theo yêu cầu</legend>
         <div className="form-grid">
           <ContactFields prefix={prefix} />
+          <PaymentFields prefix={prefix} />
           <div className="field">
             <label htmlFor={`${prefix}-category`}>
               Loại tranh <span aria-hidden="true">*</span>
@@ -522,7 +536,7 @@ export function PurchaseForm({
 }) {
   const prefix = useId();
   const started = useRef(false);
-  const { status, error, bookingId, send, reset } = useBookingRequest();
+  const { status, error, bookingId, confirmationAccepted, send, reset } = useBookingRequest();
   function trackStart() {
     if (!started.current) {
       started.current = true;
@@ -542,7 +556,9 @@ export function PurchaseForm({
   if (status === "success")
     return (
       <SubmissionSuccess
+        purchase
         bookingId={bookingId}
+        confirmationAccepted={confirmationAccepted}
         onReset={() => {
           reset();
           started.current = false;
@@ -568,13 +584,14 @@ export function PurchaseForm({
         </p>
       </div>
       <p className="form-note">
-        Yêu cầu được gửi đến {STUDIO_EMAIL}. Các mục có * là bắt buộc.
+        Yêu cầu được gửi đến {STUDIO_EMAIL}, kèm email xác nhận gửi tới bạn. Các mục có * là bắt buộc.
       </p>
       <fieldset disabled={status === "saving"} className="form-fields">
         <legend className="sr-only">Thông tin yêu cầu mua tác phẩm</legend>
         <div className="form-grid">
           <ContactFields prefix={prefix} />
-          <SizeAndDateFields prefix={prefix} />
+          <PaymentFields prefix={prefix} showQr />
+          <p className="form-note field-full">{PURCHASE_DELIVERY_NOTE}</p>
           <div className="field field-full">
             <label htmlFor={`${prefix}-message`}>
               Lời nhắn <span className="optional-label">(không bắt buộc)</span>
@@ -599,7 +616,7 @@ export function PurchaseForm({
         <span aria-hidden="true">↗</span>
       </button>
       <p className="form-note">
-        Nhân viên sẽ liên hệ để tư vấn, xác nhận khổ tranh có sẵn và lịch giao.
+        Nhân viên sẽ liên hệ để hỗ trợ đơn hàng.
         Gửi yêu cầu chưa giữ chỗ tác phẩm hoặc phát sinh thanh toán.
       </p>
     </form>

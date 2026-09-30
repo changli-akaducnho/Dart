@@ -802,7 +802,7 @@ export function GallerySite() {
         <Modal
           title="Tác phẩm này có thể thuộc về bạn."
           onClose={() => setOverlay(null)}
-          notice={<BookingNotice />}
+          notice={<BookingNotice purchase />}
         >
           <PurchaseForm
             artwork={{

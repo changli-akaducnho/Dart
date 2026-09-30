@@ -67,7 +67,7 @@ export function getGmailSocket(_options: unknown, callback: SocketCallback) {
       }
 }
 
-export function mailFailure(error: unknown, kind: "booking" | "review", requestId: string) {
+export function mailFailure(error: unknown, kind: "booking" | "review" | "booking_confirmation", requestId: string) {
   const detail = error && typeof error === "object"
     ? error as { code?: unknown; command?: unknown; responseCode?: unknown }
     : {};

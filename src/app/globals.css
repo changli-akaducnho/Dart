@@ -1308,6 +1308,52 @@ em {
 .field-full {
   grid-column: 1 / -1;
 }
+.payment-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #cbc7bc;
+}
+.payment-fields legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.payment-fields legend span { color: var(--red); }
+.payment-options { display: grid; gap: 10px; }
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #cbc7bc;
+  background: #fffdf8;
+  font-size: 12px;
+  cursor: pointer;
+}
+.payment-option:has(input:checked) { border-color: var(--red); }
+.payment-option input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--red);
+}
+.payment-qr {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.payment-qr img {
+  display: block;
+  width: min(100%, 360px);
+  height: auto;
+  margin: 12px auto;
+}
+.payment-qr a { color: var(--red); text-decoration: underline; }
 .field label,
 .search-label {
   font-size: 11px;

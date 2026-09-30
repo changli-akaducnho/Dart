@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { after, mock, test } from "node:test";
 import nodemailer, { type SendMailOptions } from "nodemailer";
-import { minimumBookingDate, validateBooking } from "../src/lib/booking";
-import { bookingEmail } from "../src/lib/booking-email";
-import { STUDIO_EMAIL } from "../src/data/studio";
+import { minimumBookingDate, PAYMENT_METHODS, validateBooking } from "../src/lib/booking";
+import { bookingEmail, bookingConfirmationEmail } from "../src/lib/booking-email";
+import { PURCHASE_DELIVERY_NOTE, STUDIO_EMAIL } from "../src/data/studio";
 import { POST } from "../src/app/api/bookings/route";
 import { POST as postReview } from "../src/app/api/reviews/route";
 
@@ -11,6 +11,8 @@ const previousPassword = process.env.GMAIL_APP_PASSWORD;
 process.env.GMAIL_APP_PASSWORD = "test-only-not-a-real-password";
 let mail: SendMailOptions | undefined;
 let rejectMail = false;
+let receiptFailure: "throw" | "reject" | undefined;
+const sent: SendMailOptions[] = [];
 let sequence = 0;
 // Every send is intercepted. No Gmail login or external email is performed.
 mock.method(
@@ -19,8 +21,14 @@ mock.method(
   () =>
     ({
       async sendMail(message: SendMailOptions) {
-        mail = message;
+        sent.push(message);
+        const isReceipt = typeof message.to === "object" && !Array.isArray(message.to);
+        if (!isReceipt) mail = message;
         if (rejectMail) throw new Error("Simulated SMTP outage");
+        if (isReceipt) {
+          if (receiptFailure === "throw") throw new Error("Simulated customer mail failure");
+          return { accepted: receiptFailure === "reject" ? [] : [(message.to as { address: string }).address], rejected: [] };
+        }
         return { accepted: [STUDIO_EMAIL], rejected: [] };
       },
       close() {},
@@ -40,6 +48,7 @@ function form(overrides: Record<string, string | undefined> = {}) {
     phone: "0901234567",
     email: `booking-${++sequence}@example.test`,
     address: "123 Đường kiểm thử, Phường 1, Quận 10, TP.HCM",
+    paymentMethod: "cod",
     category: "Chân dung",
     dimensions: "A4",
     budget: "Dưới 1 triệu",
@@ -177,6 +186,54 @@ test("API sends a validated booking and actual image bytes using the studio reci
   assert.equal(mail?.attachments?.length, 1);
   assert.ok(Buffer.isBuffer(mail?.attachments?.[0].content));
 });
+
+test("customer receipt has the same booking ID, details, studio reply-to and no final order promise", () => {
+  for (const type of ["commission", "purchase"] as const) {
+    const booking = validateBooking(form({ type, artworkId: "cc1", desiredDate: "2099-10-06" }));
+    const receipt = bookingConfirmationEmail(booking, "DART-RECEIPT", { title: "Tranh thử", price: 79000 });
+    assert.deepEqual(receipt.to, { name: booking.name, address: booking.email });
+    assert.equal(receipt.replyTo.address, STUDIO_EMAIL);
+    for (const value of ["DART-RECEIPT", booking.name, booking.address, "chưa xác nhận thanh toán", "Bạn không cần đặt lại"])
+      assert.ok(receipt.text.includes(value));
+    if (type === "purchase") assert.match(receipt.text, /79.000 VNĐ/);
+    else {
+      for (const value of [booking.category, "06/10/2099", "A4"])
+        assert.ok(receipt.text.includes(value));
+    }
+  }
+});
+
+test("booking sends a separate customer receipt after the studio accepts, without reference attachments", async () => {
+  const start = sent.length;
+  const data = form();
+  data.set("reference", reference());
+  const response = await POST(request(data));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.confirmationEmail, "accepted");
+  const messages = sent.slice(start);
+  assert.equal(messages.length, 2);
+  assert.equal(messages[0].to, STUDIO_EMAIL);
+  assert.deepEqual(messages[1].to, { name: data.get("name"), address: data.get("email") });
+  assert.equal(messages[1].attachments, undefined);
+  assert.equal(messages[1].cc, undefined);
+  for (const message of messages) assert.ok(String(message.text).includes(result.id));
+});
+
+test("customer SMTP errors or rejected recipients preserve successful booking without retrying", async () => {
+  for (const failure of ["throw", "reject"] as const) {
+    const start = sent.length;
+    receiptFailure = failure;
+    try {
+      const response = await POST(request(form()));
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.match(result.id, /^DART-/);
+      assert.equal(result.confirmationEmail, "unconfirmed");
+      assert.equal(sent.length - start, 2);
+    } finally { receiptFailure = undefined; }
+  }
+});
 test("API uses catalog price and refuses delivered artworks", async () => {
   const valid = await POST(
     request(form({ type: "purchase", artworkId: "cc1", price: "1" })),
@@ -219,6 +276,51 @@ test("purchase inquiries also require the delivery address", async () => {
   const response = await POST(request(form({ type: "purchase", artworkId: "cc1", address: undefined })));
   assert.equal(response.status, 400);
   assert.match((await response.json()).error, /địa chỉ/);
+});
+
+test("both booking types require a valid payment method and include it in both emails", async () => {
+  for (const type of ["commission", "purchase"] as const) {
+    for (const paymentMethod of [undefined, "", "cash", "paid"]) {
+      const start = sent.length;
+      const response = await POST(request(form({ type, artworkId: "cc1", paymentMethod })));
+      assert.equal(response.status, 400);
+      assert.equal(sent.length, start);
+    }
+    for (const paymentMethod of ["cod", "bank_transfer"] as const) {
+      const start = sent.length;
+      const response = await POST(request(form({ type, artworkId: "cc1", paymentMethod })));
+      assert.equal(response.status, 200);
+      assert.equal(sent.length - start, 2);
+      for (const message of sent.slice(start))
+        assert.ok(String(message.text).includes(`Phương thức thanh toán: ${PAYMENT_METHODS[paymentMethod]}`));
+    }
+  }
+});
+
+test("collection purchases need no size or date and both emails give the 3–5 day delivery notice", async () => {
+  for (const fields of [
+    { dimensions: undefined, desiredDate: undefined },
+    { dimensions: "A2", desiredDate: "2020-01-01" },
+  ]) {
+    const data = form({ type: "purchase", artworkId: "cc1", ...fields });
+    const booking = validateBooking(data);
+    assert.equal(booking.dimensions, "");
+    assert.equal(booking.desiredDate, "");
+    const start = sent.length;
+    const response = await POST(request(data));
+    assert.equal(response.status, 200);
+    assert.equal(sent.length - start, 2);
+    for (const message of sent.slice(start)) {
+      const text = String(message.text);
+      assert.ok(text.includes(PURCHASE_DELIVERY_NOTE));
+      assert.doesNotMatch(text, /Khổ tranh mong muốn|Ngày yêu cầu nhận hàng|Ngày mong muốn nhận tranh|1 tháng|7 ngày|2020-01-01/);
+    }
+  }
+});
+
+test("commissions still require both size and a date at least seven days away", async () => {
+  for (const fields of [{ dimensions: undefined }, { desiredDate: undefined }, { desiredDate: "2020-01-01" }])
+    assert.equal((await POST(request(form(fields)))).status, 400);
 });
 
 const reviewRequest = (overrides: Record<string, unknown> = {}) => new Request("http://localhost:3000/api/reviews", {
@@ -272,9 +374,11 @@ test("missing credentials never produce a false success", async () => {
   }
 });
 test("SMTP failure returns an error instead of a booking confirmation", async () => {
+  const start = sent.length;
   rejectMail = true;
   try {
     assert.equal((await POST(request(form()))).status, 502);
+    assert.equal(sent.length - start, 1, "must not send a customer receipt when studio delivery fails");
   } finally {
     rejectMail = false;
   }

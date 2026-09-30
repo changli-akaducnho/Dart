@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { artworks } from "@/data/artworks";
 import { STUDIO_EMAIL } from "@/data/studio";
 import { validateBooking } from "@/lib/booking";
-import { bookingEmail } from "@/lib/booking-email";
+import { bookingEmail, bookingConfirmationEmail } from "@/lib/booking-email";
 import { createStudioMailTransport, mailFailure } from "@/lib/studio-mail";
 
 export const runtime = "nodejs";
@@ -133,7 +133,24 @@ export async function POST(request: Request) {
       )
     )
       throw new Error("Recipient not accepted");
-    return Response.json({ id });
+    // Studio acceptance is the booking's success boundary. A receipt failure
+    // must not ask the customer to submit the same booking again.
+    let confirmationEmail: "accepted" | "unconfirmed" = "unconfirmed";
+    try {
+      const receipt = await transport.sendMail({
+        from: {
+          name: "DART Space Studio",
+          address: process.env.GMAIL_USER?.trim() || STUDIO_EMAIL,
+        },
+        ...bookingConfirmationEmail(booking, id, artwork),
+      });
+      if (!receipt.accepted.some((address) => String(address).toLowerCase() === booking.email.toLowerCase()))
+        throw new Error("Confirmation recipient not accepted");
+      confirmationEmail = "accepted";
+    } catch (error) {
+      mailFailure(error, "booking_confirmation", id);
+    }
+    return Response.json({ id, confirmationEmail });
   } catch (error) {
     return Response.json(mailFailure(error, "booking", id), { status: 502 });
   } finally {
