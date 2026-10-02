@@ -42,13 +42,62 @@ const bluePortrait = artworks.find((art) => art.id === "cc2")!;
 const categoryLabel = (category: string) =>
   categories.find((item) => item.value === category)?.label || category;
 
+const navigationItems = [
+  { id: "home", label: "Trang chủ" },
+  { id: "artworks", label: "Tác phẩm" },
+  { id: "commission", label: "Đặt tranh" },
+  { id: "pricing", label: "Bảng giá" },
+  { id: "about", label: "Về DART" },
+  { id: "contact", label: "Liên hệ" },
+] as const;
+type NavigationId = (typeof navigationItems)[number]["id"];
+
 export function GallerySite() {
+  const [activeSection, setActiveSection] = useState<NavigationId>("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const pageTracked = useRef(false);
   const menuToggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const sections = ["home", "artworks", "portfolio", "commission", "pricing", "about", "contact"]
+      .map(id => document.getElementById(id))
+      .filter((element): element is HTMLElement => element !== null);
+    const header = document.querySelector(".header-inner");
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const readingLine = (header?.getBoundingClientRect().bottom ?? 88) + 40;
+      let current: NavigationId = "home";
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= readingLine) {
+          current = section.id === "portfolio" ? "artworks" : section.id as NavigationId;
+        }
+      }
+      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+        current = "contact";
+      }
+      setActiveSection(current);
+    };
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    const observer = new ResizeObserver(schedule);
+    sections.forEach(section => observer.observe(section));
+    if (header) observer.observe(header);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.addEventListener("hashchange", schedule);
+    schedule();
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("hashchange", schedule);
+    };
+  }, []);
   useEffect(() => {
     if (!pageTracked.current) {
       trackEvent("page_view", { source: "home" });
@@ -109,12 +158,13 @@ export function GallerySite() {
             DART.
           </a>
           <nav className="desktop-nav" aria-label="Điều hướng chính">
-            <a href="#home" className="nav-home"> Trang chủ </a>
-            <a href="#artworks" onClick={() => browse("navigation")}> Tác phẩm </a>
-            <a href="#commission"> Đặt tranh </a>
-            <a href="#pricing">Bảng giá</a>
-            <a href="#about"> Về DART </a>
-            <button onClick={() => contact("navigation")}> Liên hệ </button>
+            {navigationItems.map(item => (
+              <a key={item.id} href={`#${item.id}`} aria-current={activeSection === item.id ? "location" : undefined}
+                onClick={() => {
+                  if (item.id === "artworks") browse("navigation");
+                  if (item.id === "contact") trackEvent("click_contact", { source: "navigation" });
+                }}>{item.label}</a>
+            ))}
           </nav>
           <div className="header-actions">
             <a className="zalo-header" href={STUDIO_ZALO} target="_blank" rel="noopener noreferrer" aria-label="Nhắn DART qua Zalo (mở tab mới)" onClick={() => trackEvent("click_contact", { source: "zalo_mobile_header" })}>Zalo</a>
@@ -158,12 +208,14 @@ export function GallerySite() {
               }
             }}
           >
-            <a href="#home" onClick={() => setMenuOpen(false)}> Trang chủ </a>
-            <a href="#artworks" onClick={() => browse("navigation")}> Tác phẩm </a>
-            <a href="#commission" onClick={() => setMenuOpen(false)}> Đặt tranh </a>
-            <a href="#about" onClick={() => setMenuOpen(false)}> Về DART </a>
-            <a href="#pricing" onClick={() => setMenuOpen(false)}>Bảng giá</a>
-            <button onClick={() => contact("navigation")}> Liên hệ </button>
+            {navigationItems.map(item => (
+              <a key={item.id} href={`#${item.id}`} aria-current={activeSection === item.id ? "location" : undefined}
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (item.id === "artworks") browse("navigation");
+                  if (item.id === "contact") trackEvent("click_contact", { source: "navigation" });
+                }}>{item.label}</a>
+            ))}
             <button
               className="button button-primary"
               onClick={() => commission("navigation")}

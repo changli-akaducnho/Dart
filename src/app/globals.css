@@ -232,15 +232,25 @@ em {
 .desktop-nav button:hover {
   color: var(--red);
 }
-.nav-home::after {
+.desktop-nav a::before {
   content: "";
   position: absolute;
-  width: 4px;
-  height: 4px;
-  background: var(--red);
-  bottom: 1px;
-  left: calc(50% - 2px);
-  border-radius: 50%;
+  inset: 0 -10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  pointer-events: none;
+  transition: background-color 220ms ease, border-color 220ms ease;
+}
+.desktop-nav a[aria-current="location"] {
+  color: var(--red);
+}
+.desktop-nav a[aria-current="location"]::before {
+  background: #7835440a;
+  border-color: #78354440;
+}
+.desktop-nav a {
+  transition: color 220ms ease;
 }
 .header-actions {
   display: flex;
@@ -1890,6 +1900,17 @@ em {
   }
   .mobile-nav .button {
     margin-top: 12px;
+  }
+  .mobile-nav > a {
+    padding-inline: 12px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+  }
+  .mobile-nav > a[aria-current="location"] {
+    color: var(--red);
+    background: #7835440a;
+    border-color: #78354440;
   }
   .hero {
     grid-template-columns: 1fr;
