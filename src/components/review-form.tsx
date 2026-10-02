@@ -34,7 +34,7 @@ export function ReviewForm() {
         <p className="eyebrow">MỖI TRẢI NGHIỆM ĐỀU ĐÁNG LẮNG NGHE</p>
         <h3>Bức tranh của bạn,<br /><em>câu chuyện của bạn.</em></h3>
         <p>Bạn đã nhận tranh từ DART? Chia sẻ cảm nhận về tác phẩm, quá trình trao đổi hoặc điều studio có thể làm tốt hơn.</p>
-        <p>Chưa có đánh giá công khai trên website. Phản hồi của bạn được gửi riêng đến studio qua email, không tự động đăng lên trang.</p>
+        <p>Phản hồi của bạn được gửi riêng đến studio qua email, không tự động đăng lên trang.</p>
         <a className="text-link" href={STUDIO_PAGE} target="_blank" rel="noopener noreferrer">Ghé Facebook của DART ↗</a>
       </div>
       <form className="review-form inquiry-form" onSubmit={submit} aria-busy={status === "sending"}>

@@ -1,6 +1,16 @@
-# DART — Original Art & Custom Paintings
+# DART Studio — Original Art & Custom Commissions
 
 A responsive Vietnamese art studio MVP built with Next.js App Router, React, TypeScript and Tailwind CSS. Booking requests and optional reference images are sent through a server API to the studio's Gmail after Gmail credentials are configured. Customers receive a separate acknowledgement email. There are no accounts, online payments or automatic final order confirmations.
+
+## Website refinement — 2026-10-02
+
+The homepage separates available works from the portfolio, hides historical prices, and links all 23 works to `/artworks/[slug]`. Portfolio inquiries prefill the commission category and an editable inspiration note. Navigation and functional labels use Vietnamese; the empty cart and public testimonial placeholder are removed. Feedback is at `/feedback` (noindex). The supplied payment QR still appears only for a purchase with bank transfer selected.
+
+The studio confirmed acrylic is on canvas and prices exclude frames: the existing 449,000 VND A4 quote is shown separately as 21 × 29.7 cm; no other canvas sizes or prices were invented. The team is introduced as Đội ngũ DART. Reference photos and feedback remain private unless the studio separately obtains permission to publish them.
+
+Information pages: `/order-guide`, `/shipping`, `/privacy`, `/terms`. Confirmed facts include a 50,000 VND deposit amount, frame exclusion, and cancellation/refund support for carrier-damaged artwork. Deposit scope, balance timing and customer-change-of-mind cancellation rules still need the owner's explicit confirmation; the payment page directs customers to confirm those details with the studio, without inventing fees or deadlines.
+
+SEO includes canonical/OG artwork URLs, Organization/Breadcrumb markup, Product offers only for available work, `/sitemap.xml` and `/robots.txt`. Production uses `https://dart.dartstudio.workers.dev` when the public URL is blank/local/invalid. See [launch checklist](docs/launch-checklist.md) for owner actions and facts still required. No domain, email account or Search Console property has been purchased or configured by this change.
 
 ## Run locally
 
@@ -65,7 +75,7 @@ The production server returns **404** for `/analytics`. The dashboard is deliber
 | `src/components/inquiry-forms.tsx`                                                            | Validated commission and purchase forms; reference preview and truthful success/error states                     |
 | `src/components/icons.tsx`                                                                    | Small reusable inline icon set; no icon dependency                                                               |
 | `src/components/analytics-dashboard.tsx`                                                      | Metrics, session rates, recent events and CSV export                                                             |
-| `src/data/artworks.ts`                                                                        | Twenty typed DART catalog records, status and price data, image lists and hero selection                         |
+| `src/data/artworks.ts`                                                                        | Twenty-three typed DART catalog records, status and price data, image lists and hero selection                         |
 | `src/data/site-content.ts`                                                                    | Category labels, FAQ, ordering and shipping information                                                         |
 | `src/data/pricing.ts`, `src/components/pricing-section.tsx`                                    | A5/A4 price list and surcharges transcribed from the studio's giá.xlsx                                             |
 | `src/components/review-form.tsx`, `src/lib/review.ts`, `src/app/api/reviews/route.ts`             | Private customer feedback form, validation and studio email delivery                                             |
@@ -85,9 +95,9 @@ The production server returns **404** for `/analytics`. The dashboard is deliber
 
 ## Edit artworks and images
 
-Edit `src/data/artworks.ts`; the hero, gallery, search, detail view and purchase inquiry consume this shared catalog. It contains 20 records: `c1`–`c8`, `p1`, `p2`, `p3`, `p5`, `p7`, `p8`, `cc1`, `cc2`, Akaza, Raiden, one custom shoe product and one custom golf product.
+Edit `src/data/artworks.ts`; the hero, gallery, search, detail view and purchase inquiry consume this shared catalog. It contains 23 records. Seven newly supplied works were added to the delivered portfolio on 2026-10-02; C6 and P8 use refreshed photographs. At the studio's request, CC1, C2, C7 and P5 were removed from the public catalog, artwork pages, search and sitemap on 2026-10-02. Original source image files are preserved.
 
-`heroArtworkIds` selects `akaza`, `raiden`, `p7` and `p8`, in that order. These four records are excluded from the main collection, which displays all 16 remaining works with category filtering. Search covers the full 20-record catalog, including the hero works. Categories are **Chân dung**, **Character Illustration**, **Phong cảnh**, **Thú cưng** and **Custom Concept**. Phong cảnh currently has no supplied artwork, so its filter shows an empty state.
+`heroArtworkIds` selects `akaza`, `raiden`, `p7` and `p8`, in that order. The collection shows one available work; the portfolio shows the other 22 works with category filtering. Search covers the full catalog. Categories display as **Chân dung**, **Minh họa nhân vật**, **Phong cảnh**, **Thú cưng** and **Ý tưởng riêng**. Phong cảnh currently has no supplied artwork, so its filter shows an empty state.
 
 The hero crossfades automatically every six seconds. Visitors can select a work, move backward/forward, use the keyboard arrow keys, and pause/resume playback. Automatic playback pauses while hovered, focused, a dialog is open, or the browser tab is hidden. Reduced-motion preferences disable automatic playback initially; visitors can explicitly enable it.
 
@@ -95,7 +105,7 @@ Each artwork record defines `id`, `slug`, `title`, `artist`, `price` (numeric VN
 
 Keep `status`, `available` and `price` consistent:
 
-- `cc1` is available at **79,000 VND** and `cc2` at **49,000 VND**. These are the only works currently accepting purchase inquiries.
+- `cc2` is available at **49,000 VND** and is the only work currently accepting purchase inquiries.
 - All `c`/`p` works and both custom products are marked `delivered`. The custom shoe price is **249,000 VND** and the golf product price is **349,000 VND**. Their detail CTA opens a new commission request.
 - Akaza and Raiden have `price: null`, `status: "inquiry"` and `available: false`. They show “Liên hệ báo giá”; purchase inquiries are intentionally disabled for these two works.
 

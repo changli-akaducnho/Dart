@@ -1,5 +1,5 @@
 import { PURCHASE_DELIVERY_NOTE, SHIPPING_NOTE, STUDIO_EMAIL, STUDIO_ZALO } from "../data/studio";
-import { PAYMENT_METHODS, type Booking } from "./booking";
+import { bookingCategoryLabel, COMMISSION_TIMELINE_NOTE, COMMISSION_PLANNING_NOTE, PAYMENT_METHODS, type Booking } from "./booking";
 
 export function bookingEmail(
   booking: Booking,
@@ -32,14 +32,14 @@ export function bookingEmail(
       "",
       "THÔNG TIN ĐẶT TRANH",
       ...(booking.type === "commission"
-        ? [`Thể loại: ${booking.category}`, `Ngân sách: ${booking.budget}`]
+        ? [`Thể loại: ${bookingCategoryLabel(booking.category)}`, `Ngân sách: ${booking.budget}`]
         : [
             `Mã tranh: ${booking.artworkId}`,
             `Tác phẩm: ${artwork?.title}`,
             `Giá tham khảo: ${artwork?.price?.toLocaleString("vi-VN")} VNĐ`,
           ]),
       ...(booking.type === "commission"
-        ? [`Khổ tranh mong muốn: ${booking.dimensions}`, `Ngày yêu cầu nhận hàng: ${date}`]
+        ? [`Khổ tranh mong muốn: ${booking.dimensions}`, `Ngày mong muốn nhận tranh (cần xác nhận): ${date}`]
         : [PURCHASE_DELIVERY_NOTE]),
       `Mô tả ý tưởng: ${booking.idea || "Không cung cấp"}`,
       `Lời nhắn: ${booking.message || "Không có"}`,
@@ -47,7 +47,7 @@ export function bookingEmail(
       "",
       "LƯU Ý TƯ VẤN",
       ...(booking.type === "commission"
-        ? ["Khách nên đặt trước 1 tháng để tránh rủi ro về thời gian. Ngày khách chọn là ngày mong muốn, cần studio xác nhận.",
+        ? [COMMISSION_TIMELINE_NOTE, COMMISSION_PLANNING_NOTE, "Ngày khách chọn là ngày mong muốn, cần studio xác nhận.",
            "Nhân viên tư vấn vui lòng liên hệ khách để xác nhận yêu cầu, kích thước, báo giá và lịch giao."]
         : ["Nhân viên vui lòng liên hệ khách để hỗ trợ đơn hàng và giao tranh có sẵn."]),
       "Đây là yêu cầu tư vấn đặt tranh; chưa xác nhận thanh toán hoặc giữ chỗ tác phẩm.",
@@ -72,10 +72,10 @@ export function bookingConfirmationEmail(
       "",
       "THÔNG TIN YÊU CẦU",
       ...(booking.type === "commission"
-        ? ["Hình thức: Đặt tranh theo yêu cầu", `Thể loại: ${booking.category}`, `Ngân sách: ${booking.budget}`]
+        ? ["Hình thức: Đặt tranh theo yêu cầu", `Thể loại: ${bookingCategoryLabel(booking.category)}`, `Ngân sách: ${booking.budget}`]
         : ["Hình thức: Đặt tranh có sẵn", `Tác phẩm: ${artwork?.title}`, `Mã tranh: ${booking.artworkId}`, `Giá tham khảo: ${artwork?.price?.toLocaleString("vi-VN")} VNĐ`]),
       ...(booking.type === "commission"
-        ? [`Khổ tranh mong muốn: ${booking.dimensions}`, `Ngày mong muốn nhận tranh: ${booking.desiredDate.split("-").reverse().join("/")}`]
+        ? [`Khổ tranh mong muốn: ${booking.dimensions}`, `Ngày mong muốn nhận tranh (cần xác nhận): ${booking.desiredDate.split("-").reverse().join("/")}`]
         : [PURCHASE_DELIVERY_NOTE]),
       `Điện thoại / Zalo: ${booking.phone}`,
       `Địa chỉ nhận hàng: ${booking.address}`,
@@ -88,7 +88,7 @@ export function bookingConfirmationEmail(
         ? "Nhân viên tư vấn sẽ liên hệ trực tiếp để xác nhận yêu cầu, báo giá và lịch giao tranh."
         : "Nhân viên sẽ liên hệ trực tiếp để hỗ trợ đơn hàng.",
       "Email này xác nhận đã nhận yêu cầu đặt tranh, chưa xác nhận thanh toán hoặc giữ chỗ tác phẩm.",
-      ...(booking.type === "commission" ? ["Bạn nên đặt trước 1 tháng. Ngày nhận mong muốn cần được studio xác nhận."] : []),
+      ...(booking.type === "commission" ? [COMMISSION_TIMELINE_NOTE, COMMISSION_PLANNING_NOTE, "Ngày nhận mong muốn cần được studio xác nhận."] : []),
       "Nếu cần gấp hoặc muốn sửa thông tin, hãy trả lời email này hoặc liên hệ Zalo kèm mã yêu cầu. Bạn không cần đặt lại.",
       `Zalo: ${STUDIO_ZALO}`,
       `Email studio: ${STUDIO_EMAIL}`,

@@ -496,6 +496,32 @@ em {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 36px 28px;
 }
+.collection-intro {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 25px;
+  font-size: 13px;
+}
+.available-grid { max-width: 850px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.portfolio-section { border-top: 1px solid var(--line); }
+.artwork-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 15px; }
+.artwork-actions .text-link { font-size: 12px; }
+.information-page { max-width: 980px; padding-bottom: 65px; }
+.information-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 28px 0; margin-bottom: 50px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.information-page h1 { font-size: clamp(30px, 5vw, 52px); line-height: 1.2; margin: 18px 0; }
+.information-lead { max-width: 720px; font-size: 17px; color: var(--muted); line-height: 1.7; }
+.information-nav { display: flex; gap: 14px 22px; flex-wrap: wrap; margin: 30px 0; font-size: 13px; }
+.information-nav a[aria-current="page"] { color: var(--red); text-decoration: underline; }
+.information-content { max-width: 760px; }
+.information-content section { border-top: 1px solid var(--line); padding: 28px 0; }
+.information-content h2 { font-size: 25px; margin-bottom: 14px; }
+.information-content p { font-size: 15px; line-height: 1.85; margin: 12px 0; }
+.information-footer { border-top: 1px solid var(--line); padding-top: 30px; line-height: 2; }
+.information-page a { overflow-wrap: anywhere; }
+.information-footer .button { margin: 15px 0; }
+@media (max-width: 550px) { .available-grid { grid-template-columns: 1fr; } .information-header { margin-bottom: 30px; } }
 .artwork-image {
   display: block;
   width: 100%;
@@ -2451,12 +2477,11 @@ em {
   font-size: 11px;
   letter-spacing: 0.05em;
 }
+.zalo-header { display: none; }
 @media (max-width: 550px) {
+  .zalo-header { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 50%; background: #0068d8; color: white; font-size: 12px; font-weight: 600; }
   .zalo-contact {
-    right: max(16px, env(safe-area-inset-right));
-    bottom: max(16px, env(safe-area-inset-bottom));
-    min-height: 56px;
-    padding: 6px;
+    display: none;
   }
   .zalo-contact-copy {
     display: none;

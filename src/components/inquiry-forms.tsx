@@ -9,11 +9,16 @@ import {
   type FormEvent,
 } from "react";
 import { trackEvent } from "@/lib/analytics";
+import type { ArtworkCategory } from "@/data/artworks";
 import { PaymentFields } from "./payment-fields";
 import {
   BOOKING_CATEGORIES,
   BOOKING_SIZES,
   BOOKING_BUDGETS,
+  bookingCategoryForArtwork,
+  bookingCategoryLabel,
+  COMMISSION_TIMELINE_NOTE,
+  COMMISSION_PLANNING_NOTE,
   MAX_REFERENCE_BYTES,
   REFERENCE_TYPES,
   minimumBookingDate,
@@ -23,6 +28,7 @@ import { PURCHASE_DELIVERY_NOTE, SHIPPING_NOTE, STUDIO_EMAIL, STUDIO_ZALO } from
 
 type FormStatus = "idle" | "saving" | "success" | "error";
 type ArtworkSummary = { id: string; title: string; price: number };
+export type CommissionInspiration = { id: string; title: string; category: ArtworkCategory };
 
 function validateForm(form: HTMLFormElement) {
   const fields = form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
@@ -165,7 +171,7 @@ function SizeAndDateFields({ prefix }: { prefix: string }) {
           aria-describedby={`${prefix}-date-note`}
         />
         <p className="form-note" id={`${prefix}-date-note`}>
-          Cách hôm nay ít nhất 7 ngày. Studio sẽ xác nhận lịch sau khi tư vấn.
+          Chọn ngày cách hôm nay ít nhất 7 ngày. Đây là ngày mong muốn, chưa phải lịch giao đã được xác nhận.
         </p>
       </div>
     </>
@@ -285,15 +291,18 @@ function SubmissionSuccess({
 
 export function CommissionForm({
   source = "commission_section",
+  inspiration,
 }: {
   source?: string;
+  inspiration?: CommissionInspiration;
 }) {
   const prefix = useId();
   const started = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const ideaInput = useRef<HTMLTextAreaElement>(null);
   const { status, error, bookingId, confirmationAccepted, send, reset } = useBookingRequest();
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(() => inspiration ? bookingCategoryForArtwork(inspiration.category) : "");
+  const [idea, setIdea] = useState(() => inspiration ? `Tham khảo phong cách: ${inspiration.title}` : "");
   const customConcept = category === "Custom Concept";
   const [reference, setReference] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -359,6 +368,7 @@ export function CommissionForm({
         onReset={() => {
           reset();
           setCategory("");
+          setIdea("");
           started.current = false;
         }}
       />
@@ -377,7 +387,10 @@ export function CommissionForm({
       </p>
       <p className="form-note">
         Yêu cầu được gửi đến {STUDIO_EMAIL}, kèm email xác nhận gửi tới bạn. Các mục có * là bắt buộc.
+        {" "}<a href="/terms" target="_blank" rel="noopener noreferrer">Thanh toán & xác nhận đơn ↗</a> · <a href="/privacy" target="_blank" rel="noopener noreferrer">Chính sách bảo mật ↗</a>
       </p>
+      <p className="form-note">{COMMISSION_TIMELINE_NOTE} {COMMISSION_PLANNING_NOTE}</p>
+      {inspiration && <p className="form-note">Lấy cảm hứng từ <strong>{inspiration.title}</strong>. Bạn có thể chỉnh lại thể loại và mô tả bên dưới để tạo một tác phẩm riêng.</p>}
       <fieldset disabled={status === "saving"} className="form-fields">
         <legend className="sr-only">Thông tin đặt tranh theo yêu cầu</legend>
         <div className="form-grid">
@@ -402,7 +415,7 @@ export function CommissionForm({
                 Chọn loại tranh
               </option>
               {BOOKING_CATEGORIES.map((value) => (
-                <option key={value}>{value}</option>
+                <option key={value} value={value}>{bookingCategoryLabel(value)}</option>
               ))}
             </select>
           </div>
@@ -438,6 +451,8 @@ export function CommissionForm({
               ref={ideaInput}
               id={`${prefix}-idea`}
               name="idea"
+              value={idea}
+              onChange={(event) => setIdea(event.target.value)}
               rows={4}
               placeholder="Câu chuyện, phong cách, màu sắc hoặc không gian bạn muốn dành cho tác phẩm…"
               required={customConcept}
@@ -467,9 +482,9 @@ export function CommissionForm({
             />
             <p className="form-note" id={`${prefix}-file-note`}>
               JPG, PNG hoặc WebP · tối đa 5 MB. Ảnh được đính kèm email gửi
-              studio.
+              studio để tư vấn và thực hiện yêu cầu của bạn. Website không tự động công khai ảnh.
               {customConcept &&
-                " Custom Concept cần cả mô tả ý tưởng và ảnh tham khảo."}
+                " Ý tưởng riêng cần cả mô tả ý tưởng và ảnh tham khảo."}
             </p>
             {fileError && (
               <p
@@ -516,7 +531,7 @@ export function CommissionForm({
         className="button button-primary"
         disabled={status === "saving"}
       >
-        {status === "saving" ? "Đang gửi yêu cầu…" : "Đặt tranh — nhận tư vấn"}
+        {status === "saving" ? "Đang gửi yêu cầu…" : "Đặt tranh theo yêu cầu"}
         <span aria-hidden="true">↗</span>
       </button>
       <p className="form-note">
@@ -585,6 +600,7 @@ export function PurchaseForm({
       </div>
       <p className="form-note">
         Yêu cầu được gửi đến {STUDIO_EMAIL}, kèm email xác nhận gửi tới bạn. Các mục có * là bắt buộc.
+        {" "}<a href="/terms" target="_blank" rel="noopener noreferrer">Thanh toán & xác nhận đơn ↗</a> · <a href="/privacy" target="_blank" rel="noopener noreferrer">Chính sách bảo mật ↗</a>
       </p>
       <fieldset disabled={status === "saving"} className="form-fields">
         <legend className="sr-only">Thông tin yêu cầu mua tác phẩm</legend>
@@ -612,7 +628,7 @@ export function PurchaseForm({
         className="button button-primary"
         disabled={status === "saving"}
       >
-        {status === "saving" ? "Đang gửi yêu cầu…" : "Đặt tranh — nhận tư vấn"}
+        {status === "saving" ? "Đang gửi yêu cầu…" : "Đặt tác phẩm này"}
         <span aria-hidden="true">↗</span>
       </button>
       <p className="form-note">

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { artworks, heroArtworkIds, type Artwork } from "@/data/artworks";
-import { categories, faqs, policies } from "@/data/site-content";
+import { categories, faqs } from "@/data/site-content";
 import { trackEvent } from "@/lib/analytics";
 import { CommissionForm, PurchaseForm } from "./inquiry-forms";
 import { Modal } from "./modal";
@@ -13,31 +13,32 @@ import { ArtworkImages } from "./artwork-images";
 import { BookingNotice } from "./booking-notice";
 import { STUDIO_EMAIL, STUDIO_ZALO, STUDIO_PAGE } from "@/data/studio";
 import { PricingSection } from "./pricing-section";
-import { ReviewForm } from "./review-form";
+import { ArtworkCard } from "./artwork-card";
 
 type Overlay =
-  | { type: "commission"; source: string }
+  | { type: "commission"; source: string; inspiration?: Artwork }
   | { type: "artwork"; artwork: Artwork }
   | { type: "purchase"; artwork: Artwork }
   | { type: "contact" }
-  | { type: "cart" }
   | { type: "search" }
-  | { type: "story" }
-  | { type: "policy"; key: string };
+  | { type: "story" };
 const price = (value: number | null) =>
   value === null
     ? "Liên hệ báo giá"
     : new Intl.NumberFormat("vi-VN").format(value) + " ₫";
 const statusLabel = (artwork: Artwork) =>
   artwork.status === "available"
-    ? "Còn bán"
+    ? "Có sẵn"
     : artwork.status === "delivered"
-      ? "Đã giao"
+      ? "Tác phẩm đã thực hiện"
       : "Liên hệ báo giá";
 const heroArtworks = heroArtworkIds.map(
   (id) => artworks.find((art) => art.id === id)!,
 );
-const collection = artworks.filter((art) => !heroArtworkIds.includes(art.id));
+const availableWorks = artworks.filter((art) => art.status === "available");
+const portfolioWorks = artworks.filter((art) => art.status !== "available");
+const graphiteStudy = artworks.find((art) => art.id === "c1")!;
+const bluePortrait = artworks.find((art) => art.id === "cc2")!;
 const categoryLabel = (category: string) =>
   categories.find((item) => item.value === category)?.label || category;
 
@@ -53,11 +54,26 @@ export function GallerySite() {
       trackEvent("page_view", { source: "home" });
       pageTracked.current = true;
     }
+    const params = new URLSearchParams(window.location.search);
+    const requestedPurchase = artworks.find(art => art.id === params.get("purchase") && art.status === "available" && art.price !== null);
+    const inspiration = artworks.find(art => art.id === params.get("commission"));
+    // Schedule the URL-driven interaction after hydration, then consume it so
+    // closing the dialog does not reopen it on a reload or history update.
+    if (requestedPurchase || inspiration || params.get("commission") === "new") {
+      const timer = window.setTimeout(() => {
+        setOverlay(requestedPurchase ? { type: "purchase", artwork: requestedPurchase } : { type: "commission", source: "artwork_page", inspiration });
+        const url = new URL(window.location.href);
+        url.searchParams.delete("purchase");
+        url.searchParams.delete("commission");
+        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
   }, []);
-  const commission = (source: string) => {
+  const commission = (source: string, inspiration?: Artwork) => {
     setMenuOpen(false);
     trackEvent("click_commission", { source });
-    setOverlay({ type: "commission", source });
+    setOverlay({ type: "commission", source, inspiration });
   };
   const contact = (source: string) => {
     setMenuOpen(false);
@@ -73,7 +89,7 @@ export function GallerySite() {
     setMenuOpen(false);
     setOverlay(null);
   };
-  const filtered = collection.filter(
+  const filtered = portfolioWorks.filter(
     (art) => category === "all" || art.category === category,
   );
   const searchResults = artworks.filter((art) =>
@@ -93,18 +109,15 @@ export function GallerySite() {
             DART<span>®</span>
           </a>
           <nav className="desktop-nav" aria-label="Điều hướng chính">
-            <a href="#home" className="nav-home">
-              Home
-            </a>
-            <a href="#artworks" onClick={() => browse("navigation")}>
-              Artworks
-            </a>
-            <a href="#commission">Commission</a>
+            <a href="#home" className="nav-home"> Trang chủ </a>
+            <a href="#artworks" onClick={() => browse("navigation")}> Tác phẩm </a>
+            <a href="#commission"> Đặt tranh </a>
             <a href="#pricing">Bảng giá</a>
-            <a href="#about">About</a>
-            <button onClick={() => contact("navigation")}>Contact</button>
+            <a href="#about"> Về DART </a>
+            <button onClick={() => contact("navigation")}> Liên hệ </button>
           </nav>
           <div className="header-actions">
+            <a className="zalo-header" href={STUDIO_ZALO} target="_blank" rel="noopener noreferrer" aria-label="Nhắn DART qua Zalo (mở tab mới)" onClick={() => trackEvent("click_contact", { source: "zalo_mobile_header" })}>Zalo</a>
             <button
               className="icon-button"
               aria-label="Tìm kiếm tác phẩm"
@@ -114,14 +127,6 @@ export function GallerySite() {
               }}
             >
               <Icon name="search" />
-            </button>
-            <button
-              className="icon-button bag-button"
-              aria-label="Mở giỏ hàng"
-              onClick={() => setOverlay({ type: "cart" })}
-            >
-              <Icon name="bag" />
-              <span className="cart-count">0</span>
             </button>
             <button
               className="button button-primary nav-cta"
@@ -153,20 +158,12 @@ export function GallerySite() {
               }
             }}
           >
-            <a href="#home" onClick={() => setMenuOpen(false)}>
-              Home
-            </a>
-            <a href="#artworks" onClick={() => browse("navigation")}>
-              Artworks
-            </a>
-            <a href="#commission" onClick={() => setMenuOpen(false)}>
-              Commission
-            </a>
-            <a href="#about" onClick={() => setMenuOpen(false)}>
-              About
-            </a>
+            <a href="#home" onClick={() => setMenuOpen(false)}> Trang chủ </a>
+            <a href="#artworks" onClick={() => browse("navigation")}> Tác phẩm </a>
+            <a href="#commission" onClick={() => setMenuOpen(false)}> Đặt tranh </a>
+            <a href="#about" onClick={() => setMenuOpen(false)}> Về DART </a>
             <a href="#pricing" onClick={() => setMenuOpen(false)}>Bảng giá</a>
-            <button onClick={() => contact("navigation")}>Contact</button>
+            <button onClick={() => contact("navigation")}> Liên hệ </button>
             <button
               className="button button-primary"
               onClick={() => commission("navigation")}
@@ -185,7 +182,7 @@ export function GallerySite() {
         >
           <div className="hero-copy">
             <p className="eyebrow">
-              <span className="small-line" /> ORIGINAL PAINTINGS. PERSONAL
+              <span className="small-line" /> ORIGINAL ARTWORKS. PERSONAL
               COMMISSIONS.
             </p>
             <h1 id="hero-title">
@@ -206,7 +203,7 @@ export function GallerySite() {
                 Khám phá tranh <Icon name="arrow" size={18} />
               </a>
               <button className="text-link" onClick={() => commission("hero")}>
-                Đặt tranh riêng <Icon name="arrow-up" size={17} />
+                Đặt tranh theo yêu cầu <Icon name="arrow-up" size={17} />
               </button>
             </div>
             <div className="hero-footnote">
@@ -235,115 +232,26 @@ export function GallerySite() {
           </div>
         </div>
 
-        <section
-          className="section page-width"
-          id="artworks"
-          aria-labelledby="artworks-title"
-        >
+        <section className="section page-width" id="artworks" aria-labelledby="artworks-title">
           <div className="section-heading">
-            <div>
-              <p className="eyebrow">01 / SELECTED WORKS</p>
-              <h2 id="artworks-title">
-                Tác phẩm nổi bật<span className="serif-dot">.</span>
-              </h2>
-            </div>
-            <p>
-              Một góc nhìn mới.
-              <br />
-              Một cảm xúc ở lại.
-            </p>
+            <div><p className="eyebrow">01 / AVAILABLE ARTWORKS</p><h2 id="artworks-title">Tác phẩm có sẵn<span className="serif-dot">.</span></h2></div>
+            <p>Chọn một tác phẩm để mang về.<br />Đơn hàng sẽ được giao trong 3–5 ngày.</p>
+          </div>
+          <div className="collection-intro"><span>{availableWorks.length} tác phẩm có sẵn</span><a className="text-link" href="#portfolio">Tham khảo tác phẩm đã thực hiện ↓</a></div>
+          <div className="artwork-grid available-grid">{availableWorks.map(art => <ArtworkCard key={art.id} artwork={art} onOpen={openArtwork} onCommission={art => commission("gallery", art)} />)}</div>
+        </section>
+        <section className="section page-width portfolio-section" id="portfolio" aria-labelledby="portfolio-title">
+          <div className="section-heading">
+            <div><p className="eyebrow">THE DART PORTFOLIO</p><h2 id="portfolio-title">Tác phẩm đã thực hiện<span className="serif-dot">.</span></h2></div>
+            <p>Tham khảo nét vẽ, chất liệu và phong cách.<br />Cùng DART phát triển một ý tưởng dành riêng cho bạn.</p>
           </div>
           <div className="collection-toolbar">
-            <div
-              className="filter-list"
-              role="group"
-              aria-label="Lọc theo thể loại"
-            >
-              {categories.map((item) => (
-                <button
-                  key={item.value}
-                  aria-pressed={category === item.value}
-                  className={
-                    category === item.value ? "filter active" : "filter"
-                  }
-                  onClick={() => {
-                    setCategory(item.value);
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <span className="work-count">
-              {String(filtered.length).padStart(2, "0")} TÁC PHẨM
-            </span>
+            <div className="filter-list" role="group" aria-label="Lọc tác phẩm tham khảo theo thể loại">{categories.map(item => <button key={item.value} aria-pressed={category === item.value} className={category === item.value ? "filter active" : "filter"} onClick={() => setCategory(item.value)}>{item.label}</button>)}</div>
+            <span className="work-count">{filtered.length} TÁC PHẨM THAM KHẢO</span>
           </div>
-          <div className="artwork-grid scene-enter" key={category} aria-live="polite">
-            {filtered.map((art, index) => (
-              <article className="artwork-card" key={art.id}>
-                <button
-                  className={`artwork-image artwork-tone-${index % 3}`}
-                  onClick={() => openArtwork(art)}
-                  aria-label={`Xem tác phẩm ${art.title}`}
-                >
-                  <span className="artwork-status">
-                    <i
-                      className={art.available ? "available" : "unavailable"}
-                    />
-                    {statusLabel(art)}
-                  </span>
-                  <div className="artwork-image-mat">
-                    <Image
-                      src={art.image}
-                      alt={`${art.title}, ${art.artist}`}
-                      fill
-                      sizes="(max-width: 550px) 90vw, (max-width: 900px) 44vw, 28vw"
-                      className="object-contain"
-                    />
-                  </div>
-                  <span className="artwork-hover">
-                    Xem tác phẩm <Icon name="arrow-up" size={17} />
-                  </span>
-                </button>
-                <div className="artwork-label">
-                  <div>
-                    <button
-                      onClick={() => openArtwork(art)}
-                      className="artwork-title"
-                    >
-                      {art.title}
-                    </button>
-                    <p>{art.medium}</p>
-                  </div>
-                  <span className="artwork-price">{price(art.price)}</span>
-                </div>
-                <p className="artwork-artist">
-                  {art.id.toUpperCase()}{" "}
-                  <span>— {categoryLabel(art.category)}</span>
-                </p>
-              </article>
-            ))}
-          </div>
-          {filtered.length === 0 && (
-            <div className="collection-empty">
-              <p className="eyebrow">MỘT CÂU CHUYỆN CHƯA ĐƯỢC VẼ</p>
-              <h3>
-                Bộ sưu tập {categoryLabel(category).toLocaleLowerCase("vi")}{" "}
-                đang được cập nhật.
-              </h3>
-              <p>Bạn có thể chia sẻ ý tưởng để DART tạo một tác phẩm riêng.</p>
-              <button
-                className="button button-outline"
-                onClick={() => commission("gallery")}
-              >
-                Đặt tranh theo yêu cầu <Icon name="arrow-up" size={17} />
-              </button>
-            </div>
-          )}
-          <p className="demo-caption">
-            Tác phẩm và sản phẩm thực hiện bởi DART · Giá của các mục “Đã giao”
-            là giá tác phẩm đã thực hiện.
-          </p>
+          <div className="artwork-grid scene-enter" key={category} aria-live="polite">{filtered.map(art => <ArtworkCard key={art.id} artwork={art} onOpen={openArtwork} onCommission={art => commission("portfolio", art)} />)}</div>
+          {filtered.length === 0 && <div className="collection-empty"><h3>DART chưa có tác phẩm thuộc thể loại này trong portfolio.</h3><button className="button button-outline" onClick={() => commission("portfolio")}>Đặt tranh theo yêu cầu <Icon name="arrow-up" size={17} /></button></div>}
+          <p className="demo-caption">Giá đặt vẽ mới được niêm yết trong <a href="#pricing">bảng giá hiện tại</a> và xác nhận theo yêu cầu của bạn.</p>
         </section>
 
         <section
@@ -477,9 +385,9 @@ export function GallerySite() {
               về điều bạn thương.
             </p>
             <p>
-              DART là một studio nghệ thuật độc lập, nơi những câu chuyện cá
-              nhân tìm thấy hình hài qua từng nét vẽ. Chúng mình muốn làm ra
-              những tác phẩm mà bạn có thể gọi là «của mình».
+              Đội ngũ DART trực tiếp thực hiện tranh chân dung, minh họa nhân vật
+              và sản phẩm vẽ theo ý tưởng riêng. Từ nét chì, bút bi đến màu trên
+              canvas, mỗi chất liệu là một cách để kể câu chuyện của bạn.
             </p>
             <button
               className="text-link"
@@ -493,27 +401,15 @@ export function GallerySite() {
           </div>
         </section>
 
-        <section className="testimonials-section" id="reviews" aria-labelledby="reviews-title">
-          <div className="page-width">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">ART FINDS A HOME</p>
-                <h2 id="reviews-title">Khách hàng nói gì về DART</h2>
-              </div>
-            </div>
-            <ReviewForm />
-          </div>
-        </section>
-
         <section
           className="section page-width studio-section"
           aria-labelledby="studio-title"
         >
           <div className="section-heading">
             <div>
-              <p className="eyebrow">IN BETWEEN THE BRUSHSTROKES</p>
+              <p className="eyebrow">BEHIND THE ARTWORK</p>
               <h2 id="studio-title">
-                DART Studio<span className="serif-dot">.</span>
+                Chất liệu & nét vẽ<span className="serif-dot">.</span>
               </h2>
             </div>
             <a
@@ -531,28 +427,30 @@ export function GallerySite() {
                 image: "/images/artworks/c4.webp",
                 alt: "Tranh Diona do DART vẽ bằng chì màu",
                 label: "Diona",
+                href: "/artworks/diona-c4",
               },
               {
-                image: artworks[3].image,
-                alt: `Nét vẽ trong ${artworks[3].title}`,
-                label: "Little details",
+                image: graphiteStudy.image,
+                alt: `Nét vẽ trong ${graphiteStudy.title}`,
+                label: "Chi tiết bằng chì graphite",
+                href: `/artworks/${graphiteStudy.slug}`,
               },
               {
-                image: artworks[1].image,
-                alt: `Tác phẩm hoàn thiện: ${artworks[1].title}`,
-                label: "Color stories",
+                image: bluePortrait.image,
+                alt: `Tác phẩm hoàn thiện: ${bluePortrait.title}`,
+                label: "Những lớp nét bút bi",
+                href: `/artworks/${bluePortrait.slug}`,
               },
               {
                 image: "/images/artworks/raiden.webp",
                 alt: "Tranh Raiden do DART thực hiện",
                 label: "Raiden",
+                href: "/artworks/raiden",
               },
             ].map((item) => (
               <a
                 key={item.label}
-                href={STUDIO_PAGE}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={item.href}
                 className="studio-tile"
                 aria-label={`${item.label} — DART Studio`}
               >
@@ -585,7 +483,7 @@ export function GallerySite() {
             </h2>
             <p>Vẫn còn điều muốn biết?</p>
             <button className="text-link" onClick={() => contact("faq")}>
-              Trò chuyện cùng DART <Icon name="arrow-up" size={17} />
+              Nhắn DART tư vấn <Icon name="arrow-up" size={17} />
             </button>
           </div>
           <div className="faq-list">
@@ -614,13 +512,13 @@ export function GallerySite() {
                 className="button button-primary"
                 onClick={() => commission("final_cta")}
               >
-                Đặt tranh ngay <Icon name="arrow-up" size={18} />
+                Đặt tranh theo yêu cầu <Icon name="arrow-up" size={18} />
               </button>
               <button
                 className="button button-outline"
                 onClick={() => contact("final_cta")}
               >
-                Liên hệ DART <Icon name="arrow" size={18} />
+                Nhắn DART tư vấn <Icon name="arrow" size={18} />
               </button>
             </div>
             <span className="final-asterisk" aria-hidden="true">
@@ -649,11 +547,11 @@ export function GallerySite() {
                 Tác phẩm
               </a>
               <button onClick={() => commission("footer")}>
-                Đặt tranh riêng
+                Đặt tranh theo yêu cầu
               </button>
               <a href="#about">Về DART</a>
               <a href="#pricing">Bảng giá</a>
-              <a href="#reviews">Đánh giá</a>
+              <a href="/feedback">Gửi phản hồi sau khi nhận tranh</a>
             </div>
             <div className="footer-column">
               <h3>KẾT NỐI</h3>
@@ -677,23 +575,17 @@ export function GallerySite() {
           <div className="footer-bottom">
             <p>© {new Date().getFullYear()} DART Studio.</p>
             <div>
-              {Object.entries(policies).map(([key, policy]) => (
-                <button
-                  key={key}
-                  onClick={() => setOverlay({ type: "policy", key })}
-                >
-                  {policy.title === "Điều khoản & dữ liệu"
-                    ? "Điều khoản"
-                    : policy.title}
-                </button>
-              ))}
+              <a href="/order-guide">Hướng dẫn đặt hàng</a>
+              <a href="/shipping">Vận chuyển</a>
+              <a href="/privacy">Chính sách bảo mật</a>
+              <a href="/terms">Thanh toán & xác nhận đơn</a>
             </div>
             <span>MADE WITH A HUMAN TOUCH</span>
           </div>
         </div>
       </footer>
 
-      <a
+      {!overlay && <a
         className="zalo-contact"
         href="https://zalo.me/0963549673"
         target="_blank"
@@ -709,7 +601,7 @@ export function GallerySite() {
           <strong>Trao đổi qua Zalo</strong>
           <span>0963 549 673</span>
         </span>
-      </a>
+      </a>}
 
       {overlay?.type === "commission" && (
         <Modal
@@ -718,7 +610,7 @@ export function GallerySite() {
           notice={<BookingNotice />}
           wide
         >
-          <CommissionForm source={overlay.source} />
+          <CommissionForm key={overlay.inspiration?.id || "new"} source={overlay.source} inspiration={overlay.inspiration} />
         </Modal>
       )}
       {overlay?.type === "artwork" && (
@@ -735,10 +627,11 @@ export function GallerySite() {
               </p>
               <h2>{overlay.artwork.title}</h2>
               <p className="detail-artist">
-                {overlay.artwork.artist} · {overlay.artwork.id.toUpperCase()}
+                {overlay.artwork.artist}
               </p>
-              <p className="detail-price">{price(overlay.artwork.price)}</p>
+              {overlay.artwork.status === "available" && <><p className="detail-price">{price(overlay.artwork.price)}</p><p className="form-note">Giá chưa bao gồm khung.</p></>}
               <p>{overlay.artwork.description}</p>
+              <a className="text-link" href={`/artworks/${overlay.artwork.slug}`}>Mở trang tác phẩm <Icon name="arrow-up" size={16} /></a>
               <dl>
                 <div>
                   <dt>Kích thước</dt>
@@ -776,23 +669,23 @@ export function GallerySite() {
               ) : (
                 <button
                   className="button button-primary"
-                  onClick={() => commission("artwork_detail")}
+                  onClick={() => commission("artwork_detail", overlay.artwork)}
                 >
-                  Đặt một tác phẩm riêng <Icon name="arrow-up" size={18} />
+                  Đặt tranh tương tự <Icon name="arrow-up" size={18} />
                 </button>
               )}
               <button
                 className="button button-outline"
                 onClick={() => contact("artwork_detail")}
               >
-                Liên hệ <Icon name="chat" size={18} />
+                Nhắn DART tư vấn <Icon name="chat" size={18} />
               </button>
               <p className="form-note">
                 {overlay.artwork.status === "delivered"
                   ? "Tác phẩm đã hoàn thành và giao cho khách. Bạn có thể đặt một tác phẩm mới theo phong cách tương tự."
                   : overlay.artwork.status === "inquiry"
                     ? "Tác phẩm trưng bày để tham khảo. Vui lòng liên hệ để biết giá; chưa tiếp nhận yêu cầu mua trên website."
-                    : "Tác phẩm còn bán. Gửi yêu cầu để nhân viên tư vấn hỗ trợ và xác nhận đơn hàng."}
+                    : "Tác phẩm có sẵn. Gửi yêu cầu để nhân viên tư vấn hỗ trợ và xác nhận đơn hàng."}
               </p>
             </div>
           </div>
@@ -863,25 +756,6 @@ export function GallerySite() {
           </div>
         </Modal>
       )}
-      {overlay?.type === "cart" && (
-        <Modal title="Giỏ hàng của bạn" onClose={() => setOverlay(null)}>
-          <div className="empty-state">
-            <Icon name="bag" size={48} />
-            <h3>Một chỗ trống cho điều bạn yêu.</h3>
-            <p>
-              Giỏ hàng đang trống. Bạn có thể gửi yêu cầu mua
-              trực tiếp từ mỗi tác phẩm để bắt đầu trao đổi.
-            </p>
-            <a
-              className="button button-primary"
-              href="#artworks"
-              onClick={() => browse("cart")}
-            >
-              Khám phá tranh <Icon name="arrow" />
-            </a>
-          </div>
-        </Modal>
-      )}
       {overlay?.type === "contact" && (
         <Modal
           title="Bắt đầu một cuộc trò chuyện."
@@ -909,7 +783,7 @@ export function GallerySite() {
               className="button button-primary"
               onClick={() => commission("contact")}
             >
-              Chia sẻ ý tưởng của bạn <Icon name="arrow-up" />
+              Đặt tranh theo yêu cầu <Icon name="arrow-up" />
             </button>
             <p className="form-note">
               Sau khi nhận yêu cầu đặt tranh, nhân viên tư vấn sẽ liên hệ hỗ trợ
@@ -943,20 +817,8 @@ export function GallerySite() {
               className="button button-primary"
               onClick={() => commission("about")}
             >
-              Kể câu chuyện của bạn <Icon name="arrow-up" />
+              Đặt tranh theo yêu cầu <Icon name="arrow-up" />
             </button>
-          </div>
-        </Modal>
-      )}
-      {overlay?.type === "policy" && (
-        <Modal
-          title={policies[overlay.key].title}
-          onClose={() => setOverlay(null)}
-        >
-          <div className="prose">
-            {policies[overlay.key].paragraphs.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
-            ))}
           </div>
         </Modal>
       )}

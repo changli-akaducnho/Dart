@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Artwork } from "@/data/artworks";
 import { Icon } from "./icons";
 
@@ -20,11 +20,15 @@ export function HeroGallery({
   const [focused, setFocused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(true);
   const [hidden, setHidden] = useState(false);
-  const [explicitPlay, setExplicitPlay] = useState(false);
+  const [touching, setTouching] = useState(false);
+  const gesture = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const suppressClick = useRef(false);
   const active = items[index];
   const playing =
     !paused &&
-    (explicitPlay || (!hovered && !focused)) &&
+    !hovered &&
+    !focused &&
+    !touching &&
     !reducedMotion &&
     !hidden &&
     !suspended;
@@ -53,7 +57,6 @@ export function HeroGallery({
   }, [playing, items.length]);
 
   const change = (next: number) => {
-    setExplicitPlay(false);
     setIndex((next + items.length) % items.length);
   };
   return (
@@ -61,15 +64,9 @@ export function HeroGallery({
       className="hero-art hero-carousel"
       aria-roledescription="carousel"
       aria-label="Tác phẩm nổi bật của DART"
-      onMouseEnter={() => {
-        setHovered(true);
-        setExplicitPlay(false);
-      }}
+      onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => {
-        setFocused(true);
-        setExplicitPlay(false);
-      }}
+      onFocusCapture={() => setFocused(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget))
           setFocused(false);
@@ -94,7 +91,38 @@ export function HeroGallery({
       </div>
       <button
         className="hero-image"
-        onClick={() => onSelect(active)}
+        style={{ touchAction: "pan-y pinch-zoom" }}
+        onPointerDown={(event) => {
+          suppressClick.current = false;
+          if (event.pointerType !== "touch" || !event.isPrimary) return;
+          gesture.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+          setTouching(true);
+        }}
+        onPointerUp={(event) => {
+          const start = gesture.current;
+          if (!start || start.pointerId !== event.pointerId) return;
+          gesture.current = null;
+          setTouching(false);
+          const deltaX = event.clientX - start.x;
+          const deltaY = event.clientY - start.y;
+          // Leave vertical gestures to page scrolling; only a deliberate horizontal swipe changes slides.
+          if (Math.abs(deltaX) < 48 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
+          suppressClick.current = true;
+          change(index + (deltaX < 0 ? 1 : -1));
+        }}
+        onPointerCancel={() => {
+          gesture.current = null;
+          setTouching(false);
+        }}
+        onClick={(event) => {
+          if (suppressClick.current && event.detail !== 0) {
+            suppressClick.current = false;
+            event.preventDefault();
+            return;
+          }
+          suppressClick.current = false;
+          onSelect(active);
+        }}
         aria-label={`Xem tác phẩm ${active.title}`}
       >
         <div className="hero-frame">
@@ -113,6 +141,7 @@ export function HeroGallery({
                   loading={slideIndex === 0 ? "eager" : "lazy"}
                   fetchPriority={slideIndex === 0 ? "high" : "auto"}
                   className="object-contain"
+                  draggable={false}
                 />
               </div>
             ))}
@@ -131,11 +160,7 @@ export function HeroGallery({
           <i /> {active.title}
         </span>
         <span>
-          {active.status === "inquiry"
-            ? "Liên hệ báo giá"
-            : active.status === "delivered"
-              ? "Tác phẩm đã giao"
-              : "Còn bán"}
+          {active.status === "available" ? "Có sẵn" : active.status === "inquiry" ? "Trưng bày" : "Tác phẩm đã thực hiện"}
         </span>
       </figcaption>
       <div className="carousel-controls">
@@ -179,10 +204,8 @@ export function HeroGallery({
               if (reducedMotion) {
                 setReducedMotion(false);
                 setPaused(false);
-                setExplicitPlay(true);
               } else {
                 setPaused(!paused);
-                setExplicitPlay(paused);
               }
             }}
           >

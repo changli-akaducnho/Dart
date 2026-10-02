@@ -46,3 +46,21 @@ Each source was visually inspected, auto-oriented from EXIF with Sharp.rotate(),
 | shoes-vietnam | Picture/type/Custom Concept/giày việt nam/g5.jpg | /images/artworks/giay-viet-nam-5.webp | 1600 × 1200 | 4b3054d23bc13ca72b5d7b8ce510a0d86c5ee370fe700655b8d487c13d11a089 |
 | golf | Picture/type/Custom Concept/gậy golf/golf 1.jpg | /images/artworks/gay-golf-1.webp | 1200 × 1600 | c1c4f9d5ccde9bb2e3a4fd603f4b5ee2c37725c4585c737ae5b68f0a2f3b2663 |
 | golf | Picture/type/Custom Concept/gậy golf/golf 2.jpg | /images/artworks/gay-golf-2.webp | 1599 × 1600 | 4d37bf94bde2069f764c6b2937e0ae796ca9db92808586daa83556f29ab58cfc |
+
+## Updated inventory — 2026-10-02
+
+Seven new works from Character Illustration and Portrait were added as delivered portfolio works, as confirmed by the studio. No prices or physical dimensions were supplied for them. C6 and P8 now use replacement photographs with content-hashed filenames to avoid stale image caches. The same proportional WebP processing above was applied; all nine original hashes remained unchanged and every output decoded successfully. Other existing photographs in these folders were unchanged.
+
+CC1, C2, C7 and P5 were removed from the public catalog at the studio’s request. Historical mappings above are retained for provenance; their status notes describe the original import. The newly supplied Frieren photo is a different work at `/artworks/frieren`; the removed `/artworks/frieren-c7` stays unavailable. CC2 remains the single available catalog work.
+
+| Artwork ID | Original user photo | Site image | Output dimensions | Original SHA-256 |
+| --- | --- | --- | --- | --- |
+| frieren | Picture/type/Character Illustration/Frieren.jpg | /images/artworks/frieren-1c2ac2f8.webp | 927 × 1600 | 1c2ac2f8c2db5e48fa1c14f6ec6de5995905df9d0109a9343da6b1912f24d612 |
+| luffy | Picture/type/Character Illustration/luffy.jpg | /images/artworks/luffy-ce58a0a1.webp | 1122 × 1600 | ce58a0a1df91040401019efdff69e3c5b7ea7bb45143d613ecacdc136c6a8c63 |
+| quilien | Picture/type/Character Illustration/quilien.jpg | /images/artworks/quilien-8510a163.webp | 1107 × 1600 | 8510a163c208e329d075f953b22940878e978a43bbbceee5f0e6a47f5ae93e50 |
+| tokito-muichiro | Picture/type/Character Illustration/tokito muichiro.jpg | /images/artworks/tokito-muichiro-9be4ae2c.webp | 1024 × 1600 | 9be4ae2c31b854360e251cceedf5355638703fbce4e3572209fbbddd5d24ebef |
+| veres-kimono | Picture/type/Character Illustration/Veres kimono.jpg | /images/artworks/veres-kimono-ab6a0257.webp | 1310 × 1600 | ab6a02572bd2be4348a9691fa6d2f6981e5942214c524887b9bbc034f6b1297d |
+| nu-cuoi-ao-vang | Picture/type/Portrait/20250107_151539.jpg | /images/artworks/nu-cuoi-ao-vang-c0a586d6.webp | 1168 × 1600 | c0a586d64e4e7ed8517e83457b3699f273c5ca36efb5890962630ceb7c689db0 |
+| net-diu-dang | Picture/type/Portrait/Messenger_creation_2187018005023255.jpg | /images/artworks/net-diu-dang-3ff2cb1b.webp | 1161 × 1600 | 3ff2cb1bf67adf52297e19a01a3f179c35c7fe8f8896e95b17c3ac746f27e437 |
+| c6 | Picture/type/Character Illustration/c6.jpg | /images/artworks/c6-2c26012c.webp | 709 × 960 | 2c26012c1ce725a1f220dd628b48ec33b9949a2e10ecf1fd0c143ce54b88aadc |
+| p8 | Picture/type/Portrait/p8.jpg | /images/artworks/p8-d439bf16.webp | 1011 × 1328 | d439bf162844bc46f90a73ec55990e055b8cbba34382600cd94c2f846cf51486 |

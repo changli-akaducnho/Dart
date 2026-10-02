@@ -1,3 +1,5 @@
+import type { ArtworkCategory } from "../data/artworks";
+
 export const BOOKING_CATEGORIES = [
   "Chân dung",
   "Character Illustration",
@@ -5,6 +7,34 @@ export const BOOKING_CATEGORIES = [
   "Thú cưng",
   "Custom Concept",
 ] as const;
+export type BookingCategory = (typeof BOOKING_CATEGORIES)[number];
+const BOOKING_CATEGORY_LABELS: Record<BookingCategory, string> = {
+  "Chân dung": "Chân dung",
+  "Character Illustration": "Minh họa nhân vật",
+  "Phong cảnh": "Phong cảnh",
+  "Thú cưng": "Thú cưng",
+  "Custom Concept": "Ý tưởng riêng",
+};
+
+export function bookingCategoryLabel(category: string) {
+  return Object.hasOwn(BOOKING_CATEGORY_LABELS, category)
+    ? BOOKING_CATEGORY_LABELS[category as BookingCategory]
+    : category;
+}
+
+export function bookingCategoryForArtwork(category: ArtworkCategory): BookingCategory {
+  const categories: Record<ArtworkCategory, BookingCategory> = {
+    Portrait: "Chân dung",
+    "Character Illustration": "Character Illustration",
+    Landscape: "Phong cảnh",
+    Pet: "Thú cưng",
+    "Custom Concept": "Custom Concept",
+  };
+  return categories[category];
+}
+
+export const COMMISSION_TIMELINE_NOTE = "Thời gian thực hiện thông thường: 7–10 ngày sau khi xác nhận đơn.";
+export const COMMISSION_PLANNING_NOTE = "Khuyến nghị đặt trước 2–4 tuần để chủ động lịch vẽ và vận chuyển.";
 export const BOOKING_SIZES = ["A5", "A4"] as const;
 export const PAYMENT_METHODS = {
   cod: "COD — Thanh toán khi nhận hàng",
@@ -102,7 +132,7 @@ export function validateBooking(data: FormData, now = new Date()): Booking {
       booking.desiredDate < minimumBookingDate(now)
     ) {
       throw new Error(
-        "Ngày nhận tranh phải cách hôm nay ít nhất 7 ngày. Nếu cần gấp, vui lòng liên hệ Zalo.",
+        "Ngày mong muốn nhận tranh phải cách hôm nay ít nhất 7 ngày. Studio sẽ xác nhận lịch sau khi tư vấn; nếu cần gấp, vui lòng liên hệ Zalo.",
       );
     }
     if (!BOOKING_CATEGORIES.some((category) => category === booking.category))
@@ -110,7 +140,7 @@ export function validateBooking(data: FormData, now = new Date()): Booking {
     if (!BOOKING_BUDGETS.some((budget) => budget === booking.budget))
       throw new Error("Vui lòng chọn ngân sách.");
     if (booking.category === "Custom Concept" && booking.idea.length < 10)
-      throw new Error("Custom Concept cần mô tả ý tưởng ít nhất 10 ký tự.");
+      throw new Error("Ý tưởng riêng cần mô tả ý tưởng ít nhất 10 ký tự.");
   }
   const reference = data.get("reference");
   const hasReference = reference instanceof File && reference.size > 0;
@@ -119,7 +149,7 @@ export function validateBooking(data: FormData, now = new Date()): Booking {
     booking.category === "Custom Concept" &&
     !hasReference
   )
-    throw new Error("Vui lòng thêm ảnh tham khảo cho Custom Concept.");
+    throw new Error("Vui lòng thêm ảnh tham khảo cho Ý tưởng riêng.");
   if (reference && typeof reference === "string")
     throw new Error("Ảnh tham khảo không hợp lệ.");
   if (

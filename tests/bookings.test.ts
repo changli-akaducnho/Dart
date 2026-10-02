@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, mock, test } from "node:test";
 import nodemailer, { type SendMailOptions } from "nodemailer";
-import { minimumBookingDate, PAYMENT_METHODS, validateBooking } from "../src/lib/booking";
+import { bookingCategoryForArtwork, minimumBookingDate, PAYMENT_METHODS, validateBooking } from "../src/lib/booking";
 import { bookingEmail, bookingConfirmationEmail } from "../src/lib/booking-email";
 import { PURCHASE_DELIVERY_NOTE, STUDIO_EMAIL } from "../src/data/studio";
 import { POST } from "../src/app/api/bookings/route";
@@ -118,6 +118,30 @@ test("all ordinary categories allow missing reference and short or empty ideas",
     assert.doesNotThrow(() => validateBooking(form({ category, idea: "Đỏ" })));
   }
 });
+test("portfolio categories preselect valid booking values and both emails use Vietnamese labels and the confirmed-order timeline", () => {
+  const categories = [
+    ["Portrait", "Chân dung"],
+    ["Character Illustration", "Minh họa nhân vật"],
+    ["Landscape", "Phong cảnh"],
+    ["Pet", "Thú cưng"],
+    ["Custom Concept", "Ý tưởng riêng"],
+  ] as const;
+  for (const [artworkCategory, label] of categories) {
+    const data = form({ category: bookingCategoryForArtwork(artworkCategory), idea: "Tham khảo phong cách: Diona" });
+    if (artworkCategory === "Custom Concept") data.set("reference", reference());
+    const booking = validateBooking(data);
+    const studioMessage = bookingEmail(booking, "DART-STYLE", new Date());
+    const customerMessage = bookingConfirmationEmail(booking, "DART-STYLE");
+    for (const message of [studioMessage, customerMessage]) {
+      assert.ok(message.text.includes(`Thể loại: ${label}`));
+      assert.ok(message.text.includes("Tham khảo phong cách: Diona"));
+      assert.match(message.text, /7–10 ngày sau khi xác nhận đơn/);
+      assert.match(message.text, /2–4 tuần/);
+      assert.match(message.text, /Ngày mong muốn nhận tranh \(cần xác nhận\)/);
+      assert.doesNotMatch(message.text, /Character Illustration|Custom Concept|1 tháng/);
+    }
+  }
+});
 test("Custom Concept requires both an idea and a reference; switching back removes that requirement", () => {
   const data = form({ category: "Custom Concept" });
   assert.throws(() => validateBooking(data), /mô tả/);
@@ -189,13 +213,13 @@ test("API sends a validated booking and actual image bytes using the studio reci
 
 test("customer receipt has the same booking ID, details, studio reply-to and no final order promise", () => {
   for (const type of ["commission", "purchase"] as const) {
-    const booking = validateBooking(form({ type, artworkId: "cc1", desiredDate: "2099-10-06" }));
-    const receipt = bookingConfirmationEmail(booking, "DART-RECEIPT", { title: "Tranh thử", price: 79000 });
+    const booking = validateBooking(form({ type, artworkId: "cc2", desiredDate: "2099-10-06" }));
+    const receipt = bookingConfirmationEmail(booking, "DART-RECEIPT", { title: "Tranh thử", price: 49000 });
     assert.deepEqual(receipt.to, { name: booking.name, address: booking.email });
     assert.equal(receipt.replyTo.address, STUDIO_EMAIL);
     for (const value of ["DART-RECEIPT", booking.name, booking.address, "chưa xác nhận thanh toán", "Bạn không cần đặt lại"])
       assert.ok(receipt.text.includes(value));
-    if (type === "purchase") assert.match(receipt.text, /79.000 VNĐ/);
+    if (type === "purchase") assert.match(receipt.text, /49.000 VNĐ/);
     else {
       for (const value of [booking.category, "06/10/2099", "A4"])
         assert.ok(receipt.text.includes(value));
@@ -236,10 +260,10 @@ test("customer SMTP errors or rejected recipients preserve successful booking wi
 });
 test("API uses catalog price and refuses delivered artworks", async () => {
   const valid = await POST(
-    request(form({ type: "purchase", artworkId: "cc1", price: "1" })),
+    request(form({ type: "purchase", artworkId: "cc2", price: "1" })),
   );
   assert.equal(valid.status, 200);
-  assert.ok(String(mail?.text).includes("79.000 VNĐ"));
+  assert.ok(String(mail?.text).includes("49.000 VNĐ"));
   const unavailable = await POST(
     request(form({ type: "purchase", artworkId: "c4" })),
   );
@@ -273,22 +297,29 @@ test("API enforces validation even when client-side fields are bypassed", async 
 });
 
 test("purchase inquiries also require the delivery address", async () => {
-  const response = await POST(request(form({ type: "purchase", artworkId: "cc1", address: undefined })));
+  const response = await POST(request(form({ type: "purchase", artworkId: "cc2", address: undefined })));
   assert.equal(response.status, 400);
   assert.match((await response.json()).error, /địa chỉ/);
+});
+
+test("removed artworks cannot be ordered through stale forms or direct API calls", async () => {
+  const start = sent.length;
+  for (const artworkId of ["cc1", "c2", "c7", "p5"])
+    assert.equal((await POST(request(form({ type: "purchase", artworkId })))).status, 400);
+  assert.equal(sent.length, start);
 });
 
 test("both booking types require a valid payment method and include it in both emails", async () => {
   for (const type of ["commission", "purchase"] as const) {
     for (const paymentMethod of [undefined, "", "cash", "paid"]) {
       const start = sent.length;
-      const response = await POST(request(form({ type, artworkId: "cc1", paymentMethod })));
+      const response = await POST(request(form({ type, artworkId: "cc2", paymentMethod })));
       assert.equal(response.status, 400);
       assert.equal(sent.length, start);
     }
     for (const paymentMethod of ["cod", "bank_transfer"] as const) {
       const start = sent.length;
-      const response = await POST(request(form({ type, artworkId: "cc1", paymentMethod })));
+      const response = await POST(request(form({ type, artworkId: "cc2", paymentMethod })));
       assert.equal(response.status, 200);
       assert.equal(sent.length - start, 2);
       for (const message of sent.slice(start))
@@ -302,7 +333,7 @@ test("collection purchases need no size or date and both emails give the 3–5 d
     { dimensions: undefined, desiredDate: undefined },
     { dimensions: "A2", desiredDate: "2020-01-01" },
   ]) {
-    const data = form({ type: "purchase", artworkId: "cc1", ...fields });
+    const data = form({ type: "purchase", artworkId: "cc2", ...fields });
     const booking = validateBooking(data);
     assert.equal(booking.dimensions, "");
     assert.equal(booking.desiredDate, "");
