@@ -159,7 +159,7 @@ export default function AnalyticsDashboard() {
     <main className="analytics-shell">
       <div className="analytics-topline">
         <Link href="/" className="analytics-wordmark" aria-label="Trở về DART">
-          DART<span>®</span>
+          DART.
         </Link>
         <span className="analytics-badge">DEVELOPMENT ONLY</span>
       </div>
@@ -341,12 +341,6 @@ export default function AnalyticsDashboard() {
             serif;
           text-decoration: none;
           letter-spacing: -2px;
-        }
-        .analytics-wordmark span {
-          vertical-align: top;
-          font-size: 12px;
-          letter-spacing: 0;
-          margin-left: 4px;
         }
         .analytics-badge {
           border: 1px solid #c8b4b4;

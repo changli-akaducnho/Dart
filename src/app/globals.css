@@ -214,14 +214,6 @@ em {
   line-height: 1;
   letter-spacing: -0.065em;
 }
-.wordmark span {
-  position: absolute;
-  top: 2px;
-  right: -13px;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 10px;
-  letter-spacing: 0;
-}
 .desktop-nav {
   display: flex;
   align-items: center;

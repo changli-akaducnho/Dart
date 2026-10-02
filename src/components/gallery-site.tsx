@@ -106,7 +106,7 @@ export function GallerySite() {
       <header className="site-header">
         <div className="header-inner page-width">
           <a href="#home" className="wordmark" aria-label="DART — Trang chủ">
-            DART<span>®</span>
+            DART.
           </a>
           <nav className="desktop-nav" aria-label="Điều hướng chính">
             <a href="#home" className="nav-home"> Trang chủ </a>
@@ -533,7 +533,7 @@ export function GallerySite() {
           <div className="footer-main">
             <div className="footer-brand">
               <a href="#home" className="wordmark">
-                DART<span>®</span>
+                DART.
               </a>
               <p>
                 Original art. Personal stories.
